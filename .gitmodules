@@ -1,0 +1,4 @@
+[submodule "vendor/nfb"]
+	path = vendor/nfb
+	url = https://github.com/kalenkovich/nfb.git
+	branch = master
