@@ -1,1 +1,1 @@
-import cognigraph as cg
+from .context import cognigraph as cg
