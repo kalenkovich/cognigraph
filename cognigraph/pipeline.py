@@ -1,4 +1,4 @@
-from .node import Node, InputNode, ProcessorNode, OutputNode
+from .node import Node, SourceNode, ProcessorNode, OutputNode
 from .helpers.decorators import accepts
 
 
@@ -30,7 +30,7 @@ class Pipeline(object):
 
 
     @input.setter
-    @accepts(object, InputNode)
+    @accepts(object, SourceNode)
     def input(self, input_node):
         self._input = input_node
 
@@ -49,7 +49,6 @@ class Pipeline(object):
         for node in all_nodes:
             node.init()
 
-        while input_is_alive: # TODO: also stop if all outputs are dead
+        while self.input.is_alive: # TODO: also stop if all outputs are dead
             for node in all_nodes:
                 node.update()
-            input_is_alive = input.is_alive()
