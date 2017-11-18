@@ -1,4 +1,4 @@
-from .node import Node, SourceNode, ProcessorNode, OutputNode
+from cognigraph.nodes.node import SourceNode, ProcessorNode, OutputNode
 from .helpers.decorators import accepts
 
 

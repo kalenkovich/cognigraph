@@ -1,11 +1,11 @@
 # from . import context  # Adds the cognigraph folder to sys.path
-from cognigraph.node import SourceNode, ProcessorNode, OutputNode, TIME_DIMENSION_ID, LSL_TIME_DIMENSION_ID
-from cognigraph.pipeline import Pipeline
-
-import unittest
+import os
 import subprocess
 import sys
-import os
+import unittest
+
+from cognigraph.nodes.node import SourceNode, ProcessorNode, OutputNode
+from cognigraph.pipeline import Pipeline
 
 
 class PipelineTestingSuite(unittest.TestCase):
@@ -40,7 +40,8 @@ import time
 import pylsl as lsl
 import numpy as np
 
-from cognigraph.node import LSLStreamSource, LSLStreamOutput
+from cognigraph.nodes.sources import LSLStreamSource
+from cognigraph.nodes.outputs import LSLStreamOutput
 from cognigraph.helpers.lsl import convert_lsl_chunk_to_numpy_array
 
 source = LSLStreamSource(stream_name='cognigraph-mock-stream')
