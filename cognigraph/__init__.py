@@ -5,6 +5,6 @@ __all__ = ["node", "pipeline"]
 
 # TODO: I wish this was an empty file
 
-TIME_DIMENSION_ID = 1
-CHANNEL_DIMENSION_ID = 0
+TIME_AXIS = 1
+CHANNEL_AXIS = 1 - TIME_AXIS
 
