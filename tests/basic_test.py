@@ -1,38 +1,3 @@
-# from . import context  # Adds the cognigraph folder to sys.path
-import os
-import subprocess
-import sys
-import unittest
-
-from cognigraph.nodes.node import SourceNode, ProcessorNode, OutputNode
-from cognigraph.pipeline import Pipeline
-
-
-class PipelineTestingSuite(unittest.TestCase):
-
-    def setUp(self):
-        self.input_node = SourceNode(seconds_to_live=0.0001)
-        self.processor_nodes = [ProcessorNode() for _ in range(2)]
-        self.output_node = OutputNode()
-
-    def test_if_pipeline_works_at_all(self):
-        pipeline = Pipeline()
-        pipeline.input = self.input_node
-        for processor_node in self.processor_nodes:
-            pipeline.add_processor(processor_node=processor_node)
-        pipeline.add_output(self.output_node)
-        pipeline.run()
-
-class LSLStreamInputTestingSuite(unittest.TestCase):
-
-    def setUp(self):
-
-        self.mock_stream_process = subprocess.Popen([sys.executable, os.path.join()])
-
-    def test_init_with_mock_lsl_stream(self):
-        pass
-
-
 # TODO: write actual fucking unit test you lazy sob
 
 import time
@@ -89,6 +54,3 @@ assert(len(inverse.channel_labels) == inverse.channel_cnt)
 brain = ThreeDeeBrain()
 brain.input_node = inverse
 brain.init()
-
-if __name__ == '__main__':
-    unittest.main()
