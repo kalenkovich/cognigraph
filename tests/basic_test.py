@@ -54,3 +54,7 @@ assert(len(inverse.channel_labels) == inverse.channel_cnt)
 brain = ThreeDeeBrain()
 brain.input_node = inverse
 brain.init()
+
+brain.brain_painter.widget.show()
+brain.update()
+
