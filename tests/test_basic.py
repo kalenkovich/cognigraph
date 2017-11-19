@@ -1,11 +1,11 @@
 # from . import context  # Adds the cognigraph folder to sys.path
-from cognigraph.node import SourceNode, ProcessorNode, OutputNode, TIME_DIMENSION_ID, LSL_TIME_DIMENSION_ID
-from cognigraph.pipeline import Pipeline
-
-import unittest
+import os
 import subprocess
 import sys
-import os
+import unittest
+
+from cognigraph.nodes.node import SourceNode, ProcessorNode, OutputNode
+from cognigraph.pipeline import Pipeline
 
 
 class PipelineTestingSuite(unittest.TestCase):
@@ -40,7 +40,9 @@ import time
 import pylsl as lsl
 import numpy as np
 
-from cognigraph.node import LSLStreamSource, LSLStreamOutput
+from cognigraph.nodes.sources import LSLStreamSource
+from cognigraph.nodes.processors import InverseModel
+from cognigraph.nodes.outputs import LSLStreamOutput
 from cognigraph.helpers.lsl import convert_lsl_chunk_to_numpy_array
 
 source = LSLStreamSource(stream_name='cognigraph-mock-stream')
@@ -62,6 +64,21 @@ lsl_chunk, timestamps = inlet.pull_chunk()
 numpy_chunk = convert_lsl_chunk_to_numpy_array(lsl_chunk)
 
 assert(np.array_equal(source.output, numpy_chunk))
+
+inverse = InverseModel()
+inverse.input_node = source
+output.input_node = inverse
+
+inverse.init()
+
+source.update()
+inverse.update()
+
+# TODO: change to use TIME_DIMENSION_ID
+assert(source.output.shape[1] == inverse.output.shape[1])
+assert(source.output.shape[0] != inverse.output.shape[0])
+assert(inverse.output.shape[0] == inverse.channel_cnt)
+assert(len(inverse.channel_labels) == inverse.channel_cnt)
 
 if __name__ == '__main__':
     unittest.main()
