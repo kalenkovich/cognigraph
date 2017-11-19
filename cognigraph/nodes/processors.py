@@ -40,7 +40,7 @@ class InverseModel(ProcessorNode):
         # Either use the user-provided inverse model file or choose one of the default ones based on channel labels.
         if self.mne_inverse_model_file_path is None:
             self.mne_inverse_model_file_path = self._pick_inverse_model_based_on_channel_labels(channel_labels)
-        inverse_operator = read_inverse_operator(self.mne_inverse_model_file_path)
+        inverse_operator = read_inverse_operator(self.mne_inverse_model_file_path, verbose='ERROR')
 
         # First, let's extract the inverse model matrix for all the channels in the inverse operator
         full_operator_matrix = self._matrix_from_inverse_operator(inverse_operator, snr=self.snr, method=self.method)
@@ -77,5 +77,5 @@ class InverseModel(ProcessorNode):
         if max(label.startswith('MEG ') for label in channel_labels):
             # sample.data_path() will also download 1.5 Gb so call it only in this branch
             neuromag_inverse = os.path.join(sample.data_path(),
-                                            'MEG/sample/sample_audvis-meg-oct-6-meg-inv.fif')
+                                            'MEG', 'sample', 'sample_audvis-meg-oct-6-meg-inv.fif')
             return neuromag_inverse
