@@ -3,6 +3,7 @@ import pylsl as lsl
 from .node import SourceNode
 from ..helpers.lsl import convert_lsl_chunk_to_numpy_array, convert_lsl_format_to_numpy
 
+
 class LSLStreamSource(SourceNode):
     """ Class for reading data from an LSL stream defined by its name """
     SECONDS_TO_WAIT_FOR_THE_STREAM = 0.5
@@ -25,10 +26,10 @@ class LSLStreamSource(SourceNode):
         else:
             info = stream_infos[0]
             self._inlet = lsl.StreamInlet(info)
-            self._frequency = info.nominal_srate()
-            self._dtype = convert_lsl_format_to_numpy(self._inlet.channel_format)
+            self.frequency = info.nominal_srate()
+            self.dtype = convert_lsl_format_to_numpy(self._inlet.channel_format)
             self._channel_count = self._inlet.channel_count
-            self._channel_labels = self._read_channel_labels_from_info(self._inlet.info())
+            self.channel_labels = self._read_channel_labels_from_info(self._inlet.info())
 
     @staticmethod
     def _read_channel_labels_from_info(info: lsl.StreamInfo):
@@ -44,7 +45,7 @@ class LSLStreamSource(SourceNode):
                 single_channel_tag = single_channel_tag.next_sibling(name='channel')
             return labels
 
-    def update(self) -> object:
+    def update(self):
         super().update()
         lsl_chunk, timestamps = self._inlet.pull_chunk()
         self.output = convert_lsl_chunk_to_numpy_array(lsl_chunk)

@@ -57,4 +57,6 @@ def convert_lsl_chunk_to_numpy_array(lsl_chunk, dtype=None):
 def convert_numpy_array_to_lsl_chunk(ndarray):
     ndarray = _transpose_if_need_be(ndarray)
     return ndarray.tolist()
+
+
 convert_numpy_array_to_lsl_chunk.__doc__ = convert_lsl_chunk_to_numpy_array.__doc__

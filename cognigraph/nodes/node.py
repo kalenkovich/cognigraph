@@ -18,9 +18,9 @@ class Node(object):
     def traverse_back_and_find(self, item: str):
         """ This function will walk up the node tree until it finds a node with an attribute <item> """
         try:
-            return getattr(self._input_node, item)
+            return getattr(self.input_node, item)
         except AttributeError as e:
-            msg = 'None of the predecessor nodes containts attribute {}'.format(item)
+            msg = 'None of the predecessor nodes contains attribute {}'.format(item)
             raise AttributeError(msg).with_traceback(e.__traceback__)
 
 
@@ -66,4 +66,3 @@ class ProcessorNode(Node):
 
 class OutputNode(Node):
     pass  # TODO: implement
-

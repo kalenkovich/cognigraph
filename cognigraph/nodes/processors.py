@@ -31,7 +31,6 @@ class InverseModel(ProcessorNode):
 
     def initialize(self):
         channel_labels = self.traverse_back_and_find('channel_labels')
-        channel_cnt = len(channel_labels)
         self._inverse_model_matrix = self._assemble_inverse_model_matrix(channel_labels)
         self.channel_cnt = self._inverse_model_matrix.shape[0]
         self.channel_labels = ['vertex #{}'.format(i + 1) for i in range(self.channel_cnt)]
