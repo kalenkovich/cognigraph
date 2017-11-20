@@ -7,6 +7,8 @@ from mne.minimum_norm import read_inverse_operator
 
 from .node import ProcessorNode
 from ..helpers.matrix_functions import make_time_dimension_second, put_time_dimension_back_from_second
+from ..helpers.pynfb import pynfb_ndarray_function_wrapper
+from vendor.nfb.pynfb.signal_processing import filters
 
 
 class InverseModel(ProcessorNode):
@@ -18,7 +20,7 @@ class InverseModel(ProcessorNode):
         self.method = method
 
         self.channel_labels = None
-        self.channel_cnt = None
+        self.channel_count = None
 
     def update(self):
         input_array = self.input_node.output
@@ -32,8 +34,8 @@ class InverseModel(ProcessorNode):
     def initialize(self):
         channel_labels = self.traverse_back_and_find('channel_labels')
         self._inverse_model_matrix = self._assemble_inverse_model_matrix(channel_labels)
-        self.channel_cnt = self._inverse_model_matrix.shape[0]
-        self.channel_labels = ['vertex #{}'.format(i + 1) for i in range(self.channel_cnt)]
+        self.channel_count = self._inverse_model_matrix.shape[0]
+        self.channel_labels = ['vertex #{}'.format(i + 1) for i in range(self.channel_count)]
 
     def _assemble_inverse_model_matrix(self, channel_labels):
         # Either use the user-provided inverse model file or choose one of the default ones based on channel labels.
@@ -46,9 +48,9 @@ class InverseModel(ProcessorNode):
 
         # Now let's pick an appropriate row for each label in channel_labels. Channels that are not in the inverse
         # operator will get an all-zeros row.
-        inverse_operator_channel_cnt = inverse_operator['info']['nchan']
+        inverse_operator_channel_count = inverse_operator['info']['nchan']
         inverse_operator_channel_labels = inverse_operator['info']['ch_names']
-        picker_matrix = np.zeros((inverse_operator_channel_cnt, len(channel_labels)))
+        picker_matrix = np.zeros((inverse_operator_channel_count, len(channel_labels)))
         for (label_index, label) in enumerate(channel_labels):
             try:
                 label_index_in_operator = inverse_operator_channel_labels.index(label)
@@ -59,8 +61,8 @@ class InverseModel(ProcessorNode):
 
     def _matrix_from_inverse_operator(self, inverse_operator, snr, method) -> np.ndarray:
         # Create a dummy mne.Raw object
-        channel_cnt = inverse_operator['info']['nchan']
-        I = np.identity(channel_cnt)
+        channel_count = inverse_operator['info']['nchan']
+        I = np.identity(channel_count)
         dummy_info = inverse_operator['info']
         dummy_info['sfreq'] = self.traverse_back_and_find('frequency')
         dummy_info['projs'] = list()
@@ -78,3 +80,28 @@ class InverseModel(ProcessorNode):
             neuromag_inverse = os.path.join(sample.data_path(),
                                             'MEG', 'sample', 'sample_audvis-meg-oct-6-meg-inv.fif')
             return neuromag_inverse
+
+
+class LinearFilter(ProcessorNode):
+    def __init__(self, lower_cutoff, upper_cutoff):
+        super().__init__()
+        self.lower_cutoff = lower_cutoff
+        self.upper_cutoff = upper_cutoff
+        self._linear_filter = None  # type: filters.ButterFilter
+
+    def initialize(self):
+        frequency = self.traverse_back_and_find('frequency')
+        channel_count = self.traverse_back_and_find('channel_count')
+        if not (self.lower_cutoff is None and self.upper_cutoff is None):
+            band = (self.lower_cutoff, self.upper_cutoff)
+            self._linear_filter = filters.ButterFilter(band, fs=frequency, n_channels=channel_count)
+            self._linear_filter.apply = pynfb_ndarray_function_wrapper(self._linear_filter.apply)
+        else:
+            self._linear_filter = None
+
+    def update(self):
+        input = self.input_node.output
+        if self._linear_filter is not None:
+            self.output = self._linear_filter.apply(input)
+        else:
+            self.output = input

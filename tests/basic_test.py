@@ -6,9 +6,10 @@ import pylsl as lsl
 import numpy as np
 
 from cognigraph.nodes.sources import LSLStreamSource
-from cognigraph.nodes.processors import InverseModel
+from cognigraph.nodes.processors import InverseModel, LinearFilter
 from cognigraph.nodes.outputs import LSLStreamOutput, ThreeDeeBrain
 from cognigraph.helpers.lsl import convert_lsl_chunk_to_numpy_array
+from cognigraph import TIME_AXIS
 
 # LSL in and out
 
@@ -46,14 +47,34 @@ inverse.update()
 # TODO: change to use TIME_AXIS
 assert(source.output.shape[1] == inverse.output.shape[1])
 assert(source.output.shape[0] != inverse.output.shape[0])
-assert(inverse.output.shape[0] == inverse.channel_cnt)
-assert(len(inverse.channel_labels) == inverse.channel_cnt)
+assert(inverse.output.shape[0] == inverse.channel_count)
+assert(len(inverse.channel_labels) == inverse.channel_count)
 
 
 # Visualize sources
+
 brain = ThreeDeeBrain()
 brain.input_node = inverse
 brain.initialize()
 
 brain.brain_painter.widget.show()
 brain.update()
+
+
+# Linear filter
+
+linear_filter = LinearFilter(lower_cutoff=1, upper_cutoff=None)
+linear_filter.input_node = source
+linear_filter.initialize()
+linear_filter.update()
+
+# this linear filter should at least remove DC. Thus, new means should be somewhat close to zero
+means = np.abs(np.mean(linear_filter.output, axis=TIME_AXIS))
+mean_max = np.mean(np.max(linear_filter.output, axis=TIME_AXIS))
+assert(np.all(means < 0.1 * mean_max))
+
+linear_filter.lower_cutoff = None
+linear_filter.initialize()
+linear_filter.update()
+
+assert(linear_filter.output is source.output)
