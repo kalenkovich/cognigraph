@@ -1,6 +1,8 @@
 import time
 import numpy as np
 
+from ..helpers.misc import class_name_of
+
 
 class Node(object):
     """ Any processing step (including getting and outputing data) is an instance of this class """
@@ -24,7 +26,7 @@ class Node(object):
                 return self.input_node.traverse_back_and_find(item)
             except AttributeError:
                 msg = 'None of the predecessors of a {} node contains attribute {}'.format(
-                    type(self).__name__, item)
+                    class_name_of(self), item)
                 raise AttributeError(msg)
 
 
