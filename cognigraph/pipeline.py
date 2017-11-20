@@ -47,7 +47,7 @@ class Pipeline(object):
     def run(self):
         all_nodes = [self._input] + self._processors + self._outputs
         for node in all_nodes:
-            node.init()
+            node.initialize()
 
         while self.input.is_alive: # TODO: also stop if all outputs are dead
             for node in all_nodes:

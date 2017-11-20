@@ -25,7 +25,7 @@ class Node(object):
     def output(self, array: np.ndarray):
         self._output = array
 
-    def init(self):
+    def initialize(self):
         pass  # TODO: implement
 
     def update(self) -> None:
@@ -83,8 +83,8 @@ class SourceNode(Node):
                 self._is_alive = False
         return self._is_alive
 
-    def init(self):
-        super().init()
+    def initialize(self):
+        super().initialize()
         if self._should_self_destruct:
             self._birthtime = time.time()
 

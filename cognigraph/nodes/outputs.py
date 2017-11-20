@@ -24,8 +24,8 @@ class LSLStreamOutput(OutputNode):
     def stream_name(self):
         return self._stream_name
 
-    def init(self):
-        super().init()
+    def initialize(self):
+        super().initialize()
 
         # If no name was supplied we will use a modified version of the source name (a file or a stream name)
         source_name = self.traverse_back_and_find('source_name')
@@ -55,7 +55,7 @@ class ThreeDeeBrain(OutputNode):
         self.take_abs = take_abs
         self.colormap_limits = (None, None)
 
-    def init(self):
+    def initialize(self):
         mne_inverse_model_file_path = self.traverse_back_and_find('mne_inverse_model_file_path')
         self.brain_painter = BrainPainter(mne_inverse_model_file_path, **self._brain_painter_kwargs)
 

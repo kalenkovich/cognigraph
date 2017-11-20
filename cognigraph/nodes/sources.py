@@ -15,7 +15,7 @@ class LSLStreamSource(SourceNode):
     def set_stream_name(self, stream_name):
         self._source_name = stream_name
 
-    def init(self):
+    def initialize(self):
         stream_infos = lsl.resolve_byprop('name', self._source_name, timeout=self.SECONDS_TO_WAIT_FOR_THE_STREAM)
         if len(stream_infos) == 0:
             raise ValueError('Could not find an LSL stream with name {}'.format(self._source_name))

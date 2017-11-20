@@ -50,8 +50,8 @@ from cognigraph.helpers.lsl import convert_lsl_chunk_to_numpy_array
 source = LSLStreamSource(stream_name='cognigraph-mock-stream')
 output = LSLStreamOutput()
 output.input_node = source
-source.init()
-output.init()
+source.initialize()
+output.initialize()
 output_info = lsl.resolve_byprop('name', output.stream_name)[0]
 inlet = lsl.StreamInlet(output_info)
 inlet.open_stream()
@@ -73,7 +73,7 @@ inverse = InverseModel()
 inverse.input_node = source
 output.input_node = inverse
 
-inverse.init()
+inverse.initialize()
 
 source.update()
 inverse.update()
@@ -88,7 +88,7 @@ assert(len(inverse.channel_labels) == inverse.channel_cnt)
 # Visualize sources
 brain = ThreeDeeBrain()
 brain.input_node = inverse
-brain.init()
+brain.initialize()
 
 if __name__ == '__main__':
     unittest.main()

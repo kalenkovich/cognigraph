@@ -29,7 +29,7 @@ class InverseModel(ProcessorNode):
         output_array = W.dot(make_time_dimension_second(input_array))
         return put_time_dimension_back_from_second(output_array)
 
-    def init(self):
+    def initialize(self):
         channel_labels = self.traverse_back_and_find('channel_labels')
         channel_cnt = len(channel_labels)
         self._inverse_model_matrix = self._assemble_inverse_model_matrix(channel_labels)
