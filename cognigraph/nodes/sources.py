@@ -10,19 +10,20 @@ class LSLStreamSource(SourceNode):
 
     def __init__(self, stream_name=None):
         super().__init__()
-        self._source_name = stream_name
+        self.source_name = stream_name
         self._inlet = None
 
     def set_stream_name(self, stream_name):
-        self._source_name = stream_name
+        self.source_name = stream_name
 
     def initialize(self):
-        stream_infos = lsl.resolve_byprop('name', self._source_name, timeout=self.SECONDS_TO_WAIT_FOR_THE_STREAM)
+
+        stream_infos = lsl.resolve_byprop('name', self.source_name, timeout=self.SECONDS_TO_WAIT_FOR_THE_STREAM)
         if len(stream_infos) == 0:
-            raise ValueError('Could not find an LSL stream with name {}'.format(self._source_name))
+            raise ValueError('Could not find an LSL stream with name {}'.format(self.source_name))
         elif len(stream_infos) > 1:
             raise ValueError('There are multiple LSL streams with name {}, so I don''t know which to use'
-                             .format(self._source_name))
+                             .format(self.source_name))
         else:
             info = stream_infos[0]
             self._inlet = lsl.StreamInlet(info)

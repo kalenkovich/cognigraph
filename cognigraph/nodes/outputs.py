@@ -25,7 +25,7 @@ class LSLStreamOutput(OutputNode):
 
         # If no name was supplied we will use a modified version of the source name (a file or a stream name)
         source_name = self.traverse_back_and_find('source_name')
-        self._stream_name = self._stream_name or (source_name + '_output')
+        self.stream_name = self.stream_name or (source_name + '_output')
 
         # Get other info from somewhere down the predecessor chain
         frequency = self.traverse_back_and_find('frequency')
@@ -33,7 +33,7 @@ class LSLStreamOutput(OutputNode):
         channel_format = convert_numpy_format_to_lsl(dtype)
         channel_labels = self.traverse_back_and_find('channel_labels')
 
-        self._outlet = create_lsl_outlet(name=self._stream_name, frequency=frequency, channel_format=channel_format,
+        self._outlet = create_lsl_outlet(name=self.stream_name, frequency=frequency, channel_format=channel_format,
                                          channel_labels=channel_labels)
 
     def update(self):
@@ -169,7 +169,7 @@ class BrainPainter(object):
             return self.brain_colormap((curvature > 0) / 3 + 1 / 3)  # 1/3 for concave, 2/3 for convex
         else:
             background_color = self.brain_colormap(0.5)
-            total_vertex_cnt = self.mesh_data.vertexes.shape[0]
+            total_vertex_cnt = self.mesh_data.vertexes().shape[0]
             return np.tile(background_color, total_vertex_cnt)
 
     @staticmethod
