@@ -81,8 +81,8 @@ inverse.update()
 # TODO: change to use TIME_AXIS
 assert(source.output.shape[1] == inverse.output.shape[1])
 assert(source.output.shape[0] != inverse.output.shape[0])
-assert(inverse.output.shape[0] == inverse.channel_cnt)
-assert(len(inverse.channel_labels) == inverse.channel_cnt)
+assert(inverse.output.shape[0] == inverse.channel_count)
+assert(len(inverse.channel_labels) == inverse.channel_count)
 
 
 # Visualize sources

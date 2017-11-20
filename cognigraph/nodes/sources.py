@@ -11,7 +11,7 @@ class LSLStreamSource(SourceNode):
     def __init__(self, stream_name=None):
         super().__init__()
         self.source_name = stream_name
-        self._inlet = None
+        self._inlet = None # type: lsl.StreamInlet
 
     def set_stream_name(self, stream_name):
         self.source_name = stream_name
@@ -29,7 +29,7 @@ class LSLStreamSource(SourceNode):
             self._inlet = lsl.StreamInlet(info)
             self.frequency = info.nominal_srate()
             self.dtype = convert_lsl_format_to_numpy(self._inlet.channel_format)
-            self._channel_count = self._inlet.channel_count
+            self.channel_count = self._inlet.channel_count
             self.channel_labels = self._read_channel_labels_from_info(self._inlet.info())
 
     @staticmethod

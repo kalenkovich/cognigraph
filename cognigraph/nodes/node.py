@@ -35,7 +35,7 @@ class SourceNode(Node):
         super().__init__()
         self.frequency = None
         self.dtype = None
-        self._channel_count = None
+        self.channel_count = None
         self.channel_labels = None
         self.source_name = None
 
