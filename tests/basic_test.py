@@ -57,4 +57,3 @@ brain.initialize()
 
 brain.brain_painter.widget.show()
 brain.update()
-
