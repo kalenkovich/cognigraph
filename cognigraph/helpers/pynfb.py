@@ -10,3 +10,4 @@ def pynfb_ndarray_function_wrapper(pynfb_function):
             return pynfb_function(ndarray)
         else:
             return pynfb_function(ndarray.T).T
+    return wrapped
