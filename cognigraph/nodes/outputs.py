@@ -17,12 +17,8 @@ from vendor.pysurfer.smoothing_matrix import smoothing_matrix as calculate_smoot
 class LSLStreamOutput(OutputNode):
     def __init__(self, stream_name=None):
         super().__init__()
-        self._stream_name = stream_name
+        self.stream_name = stream_name
         self._outlet = None
-
-    @property
-    def stream_name(self):
-        return self._stream_name
 
     def initialize(self):
         super().initialize()

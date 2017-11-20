@@ -6,24 +6,8 @@ class Node(object):
     """ Any processing step (including getting and outputing data) is an instance of this class """
 
     def __init__(self):
-        self._input_node = None  # type: Node
-        self._output = None  # type: np.ndarray
-
-    @property
-    def input_node(self):
-        return self._input_node
-
-    @input_node.setter
-    def input_node(self, node: 'Node'):
-        self._input_node = node
-
-    @property
-    def output(self):
-        return self._output
-
-    @output.setter
-    def output(self, array: np.ndarray):
-        self._output = array
+        self.input_node = None  # type: Node
+        self.output = None  # type: np.ndarray
 
     def initialize(self):
         pass  # TODO: implement
@@ -45,11 +29,11 @@ class SourceNode(Node):
 
     def __init__(self, seconds_to_live=None):
         super().__init__()
-        self._frequency = None
-        self._dtype = None
+        self.frequency = None
+        self.dtype = None
         self._channel_count = None
-        self._channel_labels = None
-        self._source_name = None
+        self.channel_labels = None
+        self.source_name = None
 
         # TODO: remove this self-destruction nonsense
         self._should_self_destruct = seconds_to_live is not None
@@ -57,22 +41,6 @@ class SourceNode(Node):
             self._birthtime = None
             self._seconds_to_live = seconds_to_live
             self._is_alive = True
-
-    @property
-    def dtype(self):
-        return self._dtype
-
-    @property
-    def frequency(self):
-        return self._frequency
-
-    @property
-    def source_name(self):
-        return self._source_name
-
-    @property
-    def channel_labels(self):
-        return self._channel_labels
 
     @property
     def is_alive(self):
