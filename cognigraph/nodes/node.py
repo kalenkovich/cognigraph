@@ -19,9 +19,13 @@ class Node(object):
         """ This function will walk up the node tree until it finds a node with an attribute <item> """
         try:
             return getattr(self.input_node, item)
-        except AttributeError as e:
-            msg = 'None of the predecessor nodes contains attribute {}'.format(item)
-            raise AttributeError(msg).with_traceback(e.__traceback__)
+        except AttributeError:
+            try:
+                return self.input_node.traverse_back_and_find(item)
+            except AttributeError:
+                msg = 'None of the predecessors of a {} node contains attribute {}'.format(
+                    type(self).__name__, item)
+                raise AttributeError(msg)
 
 
 class SourceNode(Node):
