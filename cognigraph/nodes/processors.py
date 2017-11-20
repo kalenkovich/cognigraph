@@ -105,3 +105,49 @@ class LinearFilter(ProcessorNode):
             self.output = self._linear_filter.apply(input)
         else:
             self.output = input
+
+
+class EnvelopeExtractor(ProcessorNode):
+    def __init__(self, factor=0.9):
+        super().__init__()
+        self.factor = 0.9
+        self._envelope_extractor = None  # type: filters.ExponentialMatrixSmoother
+
+    def initialize(self):
+        channel_count = self.traverse_back_and_find('channel_count')
+        self._envelope_extractor = filters.ExponentialMatrixSmoother(factor=self.factor)
+        self._envelope_extractor.apply = pynfb_ndarray_function_wrapper(self._envelope_extractor.apply)
+
+    def update(self):
+        input = self.input_node.output
+        self.output = self._envelope_extractor.apply(input)
+
+
+# TODO: implement this function
+def pynfb_filter_based_processor_class(pynfb_filter_class):
+    """Returns a ProcessorNode subclass with the functionality of pynfb_filter_class
+
+    pynfb_filter_class: a subclass of pynfb.signal_processing.filters.BaseFilter
+
+    Sample usage 1:
+
+    LinearFilter = pynfb_filter_based_processor_class(filters.ButterFilter)
+    linear_filter = LinearFilter(band, fs, n_channels, order)
+
+    Sample usage 2 (this would correspond to a different implementation of this function):
+
+    LinearFilter = pynfb_filter_based_processor_class(filters.ButterFilter)
+    linear_filter = LinearFilter(band, order)
+
+    In this case LinearFilter should provide fs and n_channels parameters to filters.ButterFilter automatically
+    """
+    class PynfbFilterBasedProcessorClass(ProcessorNode):
+        def __init__(self):
+            pass
+
+        def initialize(self):
+            pass
+
+        def update(self):
+            pass
+    return PynfbFilterBasedProcessorClass
