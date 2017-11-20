@@ -6,10 +6,11 @@ import pylsl as lsl
 import numpy as np
 
 from cognigraph.nodes.sources import LSLStreamSource
-from cognigraph.nodes.processors import InverseModel, LinearFilter
+from cognigraph.nodes.processors import InverseModel, LinearFilter, EnvelopeExtractor
 from cognigraph.nodes.outputs import LSLStreamOutput, ThreeDeeBrain
 from cognigraph.helpers.lsl import convert_lsl_chunk_to_numpy_array
-from cognigraph import TIME_AXIS
+from cognigraph.helpers.matrix_functions import last_sample
+from cognigraph import TIME_AXIS, CHANNEL_AXIS
 
 # LSL in and out
 
@@ -78,3 +79,14 @@ linear_filter.initialize()
 linear_filter.update()
 
 assert(linear_filter.output is source.output)
+
+
+# Envelope extractor
+
+envelope_extractor = EnvelopeExtractor()
+envelope_extractor.input_node = linear_filter
+envelope_extractor.initialize()
+envelope_extractor.update()
+
+# TODO: come up with an actual way to test this stuff
+assert(envelope_extractor.output is not None)

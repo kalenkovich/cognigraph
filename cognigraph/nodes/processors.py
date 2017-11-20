@@ -115,7 +115,7 @@ class EnvelopeExtractor(ProcessorNode):
 
     def initialize(self):
         channel_count = self.traverse_back_and_find('channel_count')
-        self._envelope_extractor = filters.ExponentialMatrixSmoother(factor=self.factor)
+        self._envelope_extractor = filters.ExponentialMatrixSmoother(factor=self.factor, column_cnt=channel_count)
         self._envelope_extractor.apply = pynfb_ndarray_function_wrapper(self._envelope_extractor.apply)
 
     def update(self):
