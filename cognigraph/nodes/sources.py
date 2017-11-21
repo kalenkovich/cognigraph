@@ -27,6 +27,7 @@ class LSLStreamSource(SourceNode):
         else:
             info = stream_infos[0]
             self._inlet = lsl.StreamInlet(info)
+            self._inlet.open_stream()
             self.frequency = info.nominal_srate()
             self.dtype = convert_lsl_format_to_numpy(self._inlet.channel_format)
             self.channel_count = self._inlet.channel_count
