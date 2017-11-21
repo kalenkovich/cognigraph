@@ -47,7 +47,7 @@ class ThreeDeeBrain(OutputNode):
         super().__init__()
         self.colormap = None
         self._brain_painter_kwargs = brain_painter_kwargs
-        self.brain_painter = None
+        self.brain_painter = None  # type: BrainPainter
         self.take_abs = take_abs
         self.colormap_limits = (None, None)
 
@@ -70,6 +70,10 @@ class ThreeDeeBrain(OutputNode):
     def _normalize_sources(self, last_sources):
         minimum, maximum = self.colormap_limits
         return (last_sources - minimum) / (maximum - minimum)
+
+    @property
+    def widget(self):
+        return self.brain_painter.widget
 
 
 class BrainPainter(object):
