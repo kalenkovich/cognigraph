@@ -17,7 +17,7 @@ class PipelineTestingSuite(unittest.TestCase):
 
     def test_if_pipeline_works_at_all(self):
         pipeline = Pipeline()
-        pipeline.input = self.input_node
+        pipeline.source = self.input_node
         for processor_node in self.processor_nodes:
             pipeline.add_processor(processor_node=processor_node)
         pipeline.add_output(self.output_node)
