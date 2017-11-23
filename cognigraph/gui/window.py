@@ -12,27 +12,32 @@ class GUIWindow(QtGui.QMainWindow):
         self._pipeline = pipeline  # type: Pipeline
         self._controls = Controls(pipeline=self._pipeline)
         self._controls_widget = self._controls.widget
-        self._node_widgets = list()  # type: List[QtGui.QWidget]
+
+        self.main_layout = None  # type: QtGui.QBoxLayout
+        self.widgets_layout = None  # type: QtGui.QBoxLayout
 
     def init_ui(self):
-        self._pipeline.initialize_all_nodes()
-        self._node_widgets = self._get_node_widgets()
         self._controls.initialize()
 
         central_widget = QtGui.QWidget()
         self.setCentralWidget(central_widget)
 
         widgets_layout = QtGui.QHBoxLayout()
-        for node_widget in self._node_widgets:
-            widgets_layout.addWidget(node_widget)
-
         main_layout = QtGui.QHBoxLayout()
         main_layout.addLayout(widgets_layout)
         main_layout.addWidget(self._controls_widget)
 
         self.centralWidget().setLayout(main_layout)
+        self.main_layout = main_layout
+        self.widgets_layout = widgets_layout
 
-    def _get_node_widgets(self):
+    def initialize(self):
+        self._pipeline.initialize_all_nodes()
+        for node_widget in self._node_widgets:
+            self.widgets_layout.addWidget(node_widget)
+
+    @property
+    def _node_widgets(self) -> List[QtGui.QWidget]:
         node_widgets = list()
         for node in self._pipeline.all_nodes:
             try:
