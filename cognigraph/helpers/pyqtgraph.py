@@ -1,5 +1,5 @@
 from pyqtgraph import QtGui
-from pyqtgraph.parametertree import parameterTypes, ParameterTree
+from pyqtgraph.parametertree import Parameter, parameterTypes, ParameterTree
 
 
 class MyGroupParameter(parameterTypes.GroupParameter):
@@ -7,37 +7,39 @@ class MyGroupParameter(parameterTypes.GroupParameter):
         super().__init__(**opts)
         self.widget = None
 
-    def addChild(self, child, *args, **kwargs):
-        attr_name = self._construct_attr_name(child)
+    # Lets set in three cases:
+    # 1) Value is not an instance of Parameter,
+    # 2) Value is a child parameter and key is free
+    # 3) The key is '_parent'. AFAIK it is the only Parameter-type attribute set by pyqtgraph.parametertree
+    def __setattr__(self, key, value):
 
-        # Can't use hasattr because Parameter.__getattr__ looks for attr in self.names which is a dict of children's
-        # names
-        if attr_name in self.__dict__:
-            child_name = self._get_name_of_a_child(child)
-            msg = "Can't add child '{}' to '{}' because it already has an attribute named '{}'".format(
-                child_name, self.name(), attr_name)
-            raise ValueError(msg)
-        else:
-            child = super().addChild(child, *args, **kwargs)
-            setattr(self, attr_name, child)
+        if isinstance(value, Parameter) and key != '_parent':
+            if key in self.__dict__:
+                if ~isinstance(self.__dict__[key], Parameter):
+                    msg = 'Can''t set {} to {} because it is already set to something other than a Parameter'.format(
+                        key, value
+                    )
+                    raise ValueError(msg)
+                else:
+                    msg = 'Attribute {} is already set to {}. Before overwriting, use removeChild.'.format(
+                        key
+                    )
+                    raise ValueError(msg)
+            else:
+                if value not in self.childs:
+                    msg = 'Only children Parameter instances can be set as attributes. Call addChild* first.'
+                    raise ValueError(msg)
+
+        super().__setattr__(key, value)
 
     def removeChild(self, child):
+        # If an attribute was set to refer to the child, remove it as well
+        for key, value in self.__dict__.items():
+            if value is child:
+                delattr(self, key)
+                break
+
         super().removeChild(child)
-        attr_name = self._construct_attr_name(child)
-        delattr(self, attr_name)
-
-    @staticmethod
-    def _get_name_of_a_child(child):
-        # child can be a Parameter instance or it can be a dict
-        try:
-            child_name = child.name()
-        except AttributeError:
-            child_name = child['name']
-        return child_name
-
-    def _construct_attr_name(self, child):
-        child_name = self._get_name_of_a_child(child)
-        return '_'.join(child_name.lower().split(' '))
 
     def create_widget(self):
         self.widget = ParameterTree(showHeader=False)
