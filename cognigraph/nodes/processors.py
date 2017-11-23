@@ -112,7 +112,8 @@ class LinearFilter(ProcessorNode):
 class EnvelopeExtractor(ProcessorNode):
     def __init__(self, factor=0.9):
         super().__init__()
-        self.factor = 0.9
+        self.method = 'Exponential smoothing'
+        self.factor = factor
         self._envelope_extractor = None  # type: filters.ExponentialMatrixSmoother
 
     def initialize(self):
