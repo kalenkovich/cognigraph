@@ -12,6 +12,8 @@ from vendor.nfb.pynfb.signal_processing import filters
 
 
 class InverseModel(ProcessorNode):
+    SUPPORTED_METHODS = ['MNE', 'dSPM', 'sLORETA']
+
     def __init__(self, mne_inverse_model_file_path=None, snr=1.0, method='MNE'):
         super().__init__()
         self._inverse_model_matrix = None
