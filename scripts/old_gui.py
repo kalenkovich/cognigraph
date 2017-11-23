@@ -1,4 +1,4 @@
-from pyqtgraph import QtCore, QtGui
+from pyqtgraph import QtCore
 
 from cognigraph.pipeline import Pipeline
 from cognigraph.nodes import sources, processors, outputs
@@ -6,16 +6,22 @@ from cognigraph import TIME_AXIS
 from cognigraph.gui.window import GUIWindow
 
 pipeline = Pipeline()
-pipeline.source = sources.LSLStreamSource(stream_name='cognigraph-mock-stream')
-linear_filter = processors.LinearFilter(lower_cutoff=0.1, upper_cutoff=40)
-pipeline.add_processor(linear_filter)
-pipeline.add_processor(processors.InverseModel(method='MNE'))
-pipeline.add_output(outputs.ThreeDeeBrain())
-pipeline.initialize_all_nodes()
+# pipeline.source = sources.LSLStreamSource(stream_name='cognigraph-mock-stream')
+# linear_filter = processors.LinearFilter(lower_cutoff=0.1, upper_cutoff=40)
+# pipeline.add_processor(linear_filter)
+# pipeline.add_processor(processors.InverseModel(method='MNE'))
+# pipeline.add_output(outputs.ThreeDeeBrain())
+# pipeline.initialize_all_nodes()
 
 window = GUIWindow(pipeline=pipeline)
 window.init_ui()
+window.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
 window.show()
+
+base_controls = window._controls._base_controls
+source_controls = base_controls.source
+processors_controls = base_controls.processor_controls
+outputs_controls = base_controls.output_controls
 
 
 def run():

@@ -3,20 +3,21 @@ from typing import List
 from pyqtgraph import QtGui
 
 from ..pipeline import Pipeline
-from .controls import ControlsWidget
+from .controls import Controls
 
 
 class GUIWindow(QtGui.QMainWindow):
     def __init__(self, pipeline=Pipeline()):
         super().__init__()
         self._pipeline = pipeline  # type: Pipeline
-        self._controls_widget = ControlsWidget(pipeline=self._pipeline)
+        self._controls = Controls(pipeline=self._pipeline)
+        self._controls_widget = self._controls.widget
         self._node_widgets = list()  # type: List[QtGui.QWidget]
 
     def init_ui(self):
         self._pipeline.initialize_all_nodes()
         self._node_widgets = self._get_node_widgets()
-        self._controls_widget.initialize()
+        self._controls.initialize()
 
         central_widget = QtGui.QWidget()
         self.setCentralWidget(central_widget)
