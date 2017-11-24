@@ -1,7 +1,7 @@
-from ...nodes.node import OutputNode
+from pyqtgraph.parametertree import parameterTypes
+
 from ...nodes import outputs
-from ...helpers.pyqtgraph import MyGroupParameter, parameterTypes
-from ...helpers.misc import class_name_of
+from ...helpers.pyqtgraph import MyGroupParameter, SliderParameter
 
 
 class OutputNodeControls(MyGroupParameter):
@@ -20,7 +20,7 @@ class OutputNodeControls(MyGroupParameter):
         if output_node is None:
             raise ValueError("Right now we can create controls only for an already existing node")
 
-        self._output_node = output_node
+        self._output_node = output_node  # type: self.OUTPUT_CLASS
         self._create_parameters()
 
     def _create_parameters(self):
@@ -31,21 +31,20 @@ class ThreeDeeBrainControls(OutputNodeControls):
     OUTPUT_CLASS = outputs.ThreeDeeBrain
     CONTROLS_LABEL = '3D visualization settings'
 
+    TAKE_ABS_BOOL_NAME = 'Show absolute values: '
     LIMITS_MODE_COMBO_NAME = 'Limits: '
     LOCK_LIMITS_BOOL_NAME = 'Lock current limits: '
+    BUFFER_LENGTH_SLIDER_NAME = 'Buffer length: '
     LOWER_LIMIT_SPIN_BOX_NAME = 'Lower limit: '
     UPPER_LIMIT_SPIN_BOX_NAME = 'Upper limit: '
+    THRESHOLD_SLIDER_NAME = 'Show activations exceeding '
 
     def _create_parameters(self):
-        # cmap_children = [
-        #     {'name': 'Buffer length in seconds',
-        #         'type': 'slider', 'value': self.COLORMAP_BUFFER_LENGTH_DEFAULT / self.fs,
-        #         'limits': (0, self.COLORMAP_BUFFER_LENGTH_MAX / self.fs), 'prec': 3,
-        #         'suffix': ' s', 'title': 'Buffer length'},
-        #
-        #     {'name': 'Threshold pct', 'type': 'slider', 'suffix': '%', 'readonly': False, 'limits': (0, 100),
-        #                               'value': 50, 'prec': 0},
-        # ]
+
+        take_abs_bool = parameterTypes.SimpleParameter(type='bool', name=self.TAKE_ABS_BOOL_NAME, value=True,
+                                                       readonly=True)
+        take_abs_bool.sigValueChanged.connect(self._on_take_abs_toggled)
+        self.take_abs_bool = self.addChild(take_abs_bool)
 
         limits_modes = self.OUTPUT_CLASS.LIMITS_MODES
         limits_mode_values = [limits_modes.LOCAL, limits_modes.GLOBAL, limits_modes.MANUAL]
@@ -59,6 +58,12 @@ class ThreeDeeBrainControls(OutputNodeControls):
         lock_limits_bool.sigValueChanged.connect(self._on_lock_limits_toggled)
         self.lock_limits_bool = self.addChild(lock_limits_bool)
 
+        buffer_length_value = self._output_node.buffer_length
+        buffer_length_slider = SliderParameter(name=self.BUFFER_LENGTH_SLIDER_NAME, limits=(0.1, 10),
+                                               value=buffer_length_value, prec=3, suffix=' s')
+        buffer_length_slider.sigValueChanged.connect(self._on_buffer_length_changed)
+        self.buffer_length_slider = self.addChild(buffer_length_slider)
+
         lower_limit_value = self._output_node.colormap_limits.lower
         upper_limit_value = self._output_node.colormap_limits.upper
         lower_limit_spinbox = parameterTypes.SimpleParameter(type='float', name=self.LOWER_LIMIT_SPIN_BOX_NAME,
@@ -70,20 +75,36 @@ class ThreeDeeBrainControls(OutputNodeControls):
         self.lower_limit_spinbox = self.addChild(lower_limit_spinbox)  # type: parameterTypes.SimpleParameter
         self.upper_limit_spinbox = self.addChild(upper_limit_spinbox)  # type: parameterTypes.SimpleParameter
 
+        threshold_value = self._output_node.brain_painter.threshold_pct
+        threshold_slider = SliderParameter(name=self.THRESHOLD_SLIDER_NAME, limits=(0, 99), value=threshold_value,
+                                           prec=0, suffix='%')
+        threshold_slider.sigValueChanged.connect(self._on_threshold_changed)
+        self.threshold_slider = self.addChild(threshold_slider)
+
+    def _on_take_abs_toggled(self, param, value):
+        # Changes to these setting
+        pass
+
+        # Changes to the node
+        self._output_node.take_abs = value
+
     def _on_limits_mode_changed(self, param, value):
         # Changes to these settings
         if value == self.OUTPUT_CLASS.LIMITS_MODES.GLOBAL:
             self.lock_limits_bool.show(True)
+            self.buffer_length_slider.show(True)
             self.lower_limit_spinbox.show(False)
             self.upper_limit_spinbox.show(False)
 
         if value == self.OUTPUT_CLASS.LIMITS_MODES.LOCAL:
             self.lock_limits_bool.show(False)
+            self.buffer_length_slider.show(False)
             self.lower_limit_spinbox.show(False)
             self.upper_limit_spinbox.show(False)
 
         if value == self.OUTPUT_CLASS.LIMITS_MODES.MANUAL:
             self.lock_limits_bool.show(False)
+            self.buffer_length_slider.show(False)
             self.lower_limit_spinbox.show(True)
             self.upper_limit_spinbox.show(True)
 
@@ -96,6 +117,13 @@ class ThreeDeeBrainControls(OutputNodeControls):
 
         # Changes to the node
         self._output_node.lock_limits = value
+
+    def _on_buffer_length_changed(self, param, value):
+        # Changes to these setting
+        pass
+
+        # Changes to the node
+        self._output_node.buffer_length = value
 
     def _on_lower_limit_changed(self, param, value):
         # Changes to these settings
@@ -110,6 +138,13 @@ class ThreeDeeBrainControls(OutputNodeControls):
 
         # Changes to the node
         self._output_node.colormap_limits.upper = value
+
+    def _on_threshold_changed(self, param, value):
+        # Changes to these setting
+        pass
+
+        # Changes to the node
+        self._output_node.brain_painter.threshold_pct = value
 
 
 class LSLStreamOutputControls(OutputNodeControls):
