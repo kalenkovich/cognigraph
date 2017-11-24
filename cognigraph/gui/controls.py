@@ -69,12 +69,11 @@ class BaseControls(MyGroupParameter):
 
 
 class SourceControls(MyGroupParameter):
-    SourceClasses = namedtuple('SourceClasses', ['node_class', 'controls_class'])
     SOURCE_OPTIONS = {
-        'LSL stream': SourceClasses(source_nodes.LSLStreamSource,
-                                    source_node_controls.LSLStreamSourceControls),
+        'LSL stream': NodeControlClasses(source_nodes.LSLStreamSource,
+                                         source_controls.LSLStreamSourceControls),
     }
-    SOURCE_TYPE_COMBO_NAME = 'kind'  # Can't use 'type' bc there is already an attribute with this name
+    SOURCE_TYPE_COMBO_NAME = 'Source type: '
     SOURCE_TYPE_PLACEHOLDER = ''
     SOURCE_CONTROLS_NAME = 'source controls'
 
@@ -83,13 +82,10 @@ class SourceControls(MyGroupParameter):
         super().__init__(**kwargs)
 
         labels = [self.SOURCE_TYPE_PLACEHOLDER] + [label for label in self.SOURCE_OPTIONS]
-        source_type_combo = parameterTypes.ListParameter(name=self.SOURCE_TYPE_COMBO_NAME, title='Source type: ',
+        source_type_combo = parameterTypes.ListParameter(name=self.SOURCE_TYPE_COMBO_NAME,
                                                          values=labels, value=labels[0])
         source_type_combo.sigValueChanged.connect(self._on_source_type_changed)
-        self.addChild(source_type_combo)
-
-        self._invisible_placeholder_parameter = Parameter(name=self.SOURCE_CONTROLS_NAME, visible=False)
-        self.addChild(self._invisible_placeholder_parameter)
+        self.source_type_combo = self.addChild(source_type_combo)
 
     def _on_source_type_changed(self, param, value):
         try:
