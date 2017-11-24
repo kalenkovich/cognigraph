@@ -11,6 +11,7 @@ from scipy import sparse
 from .node import OutputNode
 from ..helpers.lsl import convert_numpy_format_to_lsl, convert_numpy_array_to_lsl_chunk, create_lsl_outlet
 from ..helpers.matrix_functions import last_sample
+from types import SimpleNamespace
 from vendor.pysurfer.smoothing_matrix import smoothing_matrix as calculate_smoothing_matrix, mesh_edges
 
 
@@ -43,13 +44,17 @@ class LSLStreamOutput(OutputNode):
 
 
 class ThreeDeeBrain(OutputNode):
-    def __init__(self, take_abs=True, **brain_painter_kwargs):
+    LIMITS_MODES = SimpleNamespace(GLOBAL='Global', LOCAL='Local', MANUAL='Manual')
+
+    def __init__(self, take_abs=True, limits_mode=LIMITS_MODES.LOCAL, **brain_painter_kwargs):
         super().__init__()
         self.colormap = None
+        self.limits_mode = limits_mode
+        self.lock_limits = False
         self._brain_painter_kwargs = brain_painter_kwargs
         self.brain_painter = None  # type: BrainPainter
         self.take_abs = take_abs
-        self.colormap_limits = (None, None)
+        self.colormap_limits = SimpleNamespace(lower=None, upper=None)
 
     def initialize(self):
         mne_inverse_model_file_path = self.traverse_back_and_find('mne_inverse_model_file_path')
@@ -65,10 +70,12 @@ class ThreeDeeBrain(OutputNode):
 
     def _update_colormap_limits(self, sources):
         sources = last_sample(sources)
-        self.colormap_limits = (np.min(sources), np.max(sources))
+        self.colormap_limits.lower = np.min(sources)
+        self.colormap_limits.upper = np.max(sources)
 
     def _normalize_sources(self, last_sources):
-        minimum, maximum = self.colormap_limits
+        minimum = self.colormap_limits.lower
+        maximum = self.colormap_limits.upper
         return (last_sources - minimum) / (maximum - minimum)
 
     @property
