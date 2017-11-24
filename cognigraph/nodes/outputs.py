@@ -6,6 +6,7 @@ import pyqtgraph.opengl as gl
 import numpy as np
 import nibabel as nib
 from matplotlib import cm
+from matplotlib.colors import Colormap as matplotlib_Colormap
 from scipy import sparse
 
 from .node import OutputNode
@@ -46,19 +47,20 @@ class LSLStreamOutput(OutputNode):
 class ThreeDeeBrain(OutputNode):
     LIMITS_MODES = SimpleNamespace(GLOBAL='Global', LOCAL='Local', MANUAL='Manual')
 
-    def __init__(self, take_abs=True, limits_mode=LIMITS_MODES.LOCAL, **brain_painter_kwargs):
+    def __init__(self, take_abs=True, limits_mode=LIMITS_MODES.LOCAL, buffer_length=1, **brain_painter_kwargs):
         super().__init__()
         self.colormap = None
         self.limits_mode = limits_mode
         self.lock_limits = False
-        self._brain_painter_kwargs = brain_painter_kwargs
-        self.brain_painter = None  # type: BrainPainter
+        self.buffer_length = buffer_length
         self.take_abs = take_abs
         self.colormap_limits = SimpleNamespace(lower=None, upper=None)
 
+        self.brain_painter = BrainPainter(mne_inverse_model_file_path=None, **brain_painter_kwargs)
+
     def initialize(self):
         mne_inverse_model_file_path = self.traverse_back_and_find('mne_inverse_model_file_path')
-        self.brain_painter = BrainPainter(mne_inverse_model_file_path, **self._brain_painter_kwargs)
+        self.brain_painter.initialize(mne_inverse_model_file_path)
 
     def update(self):
         sources = self.input_node.output
@@ -80,23 +82,47 @@ class ThreeDeeBrain(OutputNode):
 
     @property
     def widget(self):
-        return self.brain_painter.widget
+        if self.brain_painter.widget is not None:
+            return self.brain_painter.widget
+        else:
+            raise AttributeError('{} does not have widget yet. Probably has not been initialized')
 
 
 class BrainPainter(object):
-    def __init__(self, mne_inverse_model_file_path, threshold_pct=50, brain_colormap=cm.Greys, data_colormap=cm.Reds,
-                 show_curvature=True, surfaces_dir=None):
+    def __init__(self, mne_inverse_model_file_path, threshold_pct=50,
+                 brain_colormap: matplotlib_Colormap = cm.Greys,
+                 data_colormap: matplotlib_Colormap = cm.Reds,
+                 show_curvature=True, surfaces_dir=None, buffer_length=1):
+        """
+        This is the last step. Object of this class draws whatever data are given to it on the cortex mesh. No changes,
+        except for thresholding, are made.
+
+        :param threshold_pct: Only values exceeding this percentage threshold will be shown
+        :param show_curvature: If True, concave areas will be shown in darker grey, convex - in lighter
+        :param surfaces_dir: Path to the Fressurfer surf directory. If None, mne's sample's surfaces will be used.
+        """
 
         self.threshold_pct = threshold_pct
+        self.show_curvature = show_curvature
+
         self.brain_colormap = brain_colormap
         self.data_colormap = data_colormap
 
-        self.surfaces_dir = surfaces_dir or self._guess_surfaces_dir_based_on(mne_inverse_model_file_path)
+        self.surfaces_dir = surfaces_dir  # type: str
+        self.mesh_data = None  # type: gl.MeshData
+        self.smoothing_matrix = None  # type: np.ndarray
+        self.widget = None  # type: gl.GLViewWidget
+
+        self.background_colors = None  # type: np.ndarray  # N x 4
+        self.mesh_item = None  # type: gl.GLMeshItem
+
+    def initialize(self, mne_inverse_model_file_path):
+        self.surfaces_dir = self.surfaces_dir or self._guess_surfaces_dir_based_on(mne_inverse_model_file_path)
         self.mesh_data = self._get_mesh_data_from_surfaces_dir()
         self.smoothing_matrix = self._get_smoothing_matrix(mne_inverse_model_file_path)
         self.widget = self._create_widget()
 
-        self.background_colors = self._calculate_background_colors(show_curvature)
+        self.background_colors = self._calculate_background_colors(self.show_curvature)
         self.mesh_data.setVertexColors(self.background_colors)
         self.mesh_item = gl.GLMeshItem(meshdata=self.mesh_data, shader='shaded')
         self.widget.addItem(self.mesh_item)
