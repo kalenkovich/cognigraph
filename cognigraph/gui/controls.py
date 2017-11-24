@@ -20,37 +20,48 @@ from ..helpers.misc import class_name_of
 NodeControlClasses = namedtuple('NodeControlClasses', ['node_class', 'controls_class'])
 
 
-class ProcessorsControls(MyGroupParameter):
-    SUPPORTED_PROCESSORS = [
-        NodeControlClasses(processor_nodes.LinearFilter, processors_controls.LinearFilterControls),
-        NodeControlClasses(processor_nodes.InverseModel, processors_controls.InverseModelControls),
-        NodeControlClasses(processor_nodes.EnvelopeExtractor, processors_controls.EnvelopeExtractorControls),
-    ]
+class MultipleNodeControls(MyGroupParameter):
+    """Base class for grouping of node settings (processors or outputs). Source is supported by a separate class."""
 
-    def __init__(self, pipeline, **kwargs):
-        self._pipeline = pipeline
+    @property
+    def SUPPORTED_NODES(self):
+        raise NotImplementedError
+
+    def __init__(self, nodes, **kwargs):
+        self._nodes = nodes
         super().__init__(**kwargs)
 
-        for processor_node in pipeline._processors:
-            controls_class = self._find_controls_class_for_a_node(processor_node)
-            self.addChild(controls_class(processor_node=processor_node))
+        for node in nodes:
+            controls_class = self._find_controls_class_for_a_node(node)
+            self.addChild(controls_class(node))
 
     @classmethod
     def _find_controls_class_for_a_node(cls, processor_node):
-        for node_control_classes in cls.SUPPORTED_PROCESSORS:
+        for node_control_classes in cls.SUPPORTED_NODES:
             if isinstance(processor_node, node_control_classes.node_class):
                 return node_control_classes.controls_class
 
         # Raise an error if processor node is not supported
         msg = ("Node of class {0} is not supported by {1}.\n"
-               "Add NodeControlClasses(node_class, controls_class) to {1}.SUPPORTED_PROCESSORS").format(
+               "Add NodeControlClasses(node_class, controls_class) to {1}.SUPPORTED_NODES").format(
                 class_name_of(processor_node), cls.__name__
             )
         raise ValueError(msg)
 
 
-class OutputsControls(MyGroupParameter):
-    pass
+class ProcessorsControls(MultipleNodeControls):
+    SUPPORTED_NODES = [
+        NodeControlClasses(processor_nodes.LinearFilter, processors_controls.LinearFilterControls),
+        NodeControlClasses(processor_nodes.InverseModel, processors_controls.InverseModelControls),
+        NodeControlClasses(processor_nodes.EnvelopeExtractor, processors_controls.EnvelopeExtractorControls),
+    ]
+
+
+class OutputsControls(MultipleNodeControls):
+    SUPPORTED_NODES = [
+        NodeControlClasses(output_nodes.LSLStreamOutput, outputs_controls.LSLStreamOutputControls),
+        NodeControlClasses(output_nodes.ThreeDeeBrain, outputs_controls.ThreeDeeBrainControls),
+    ]
 
 
 class BaseControls(MyGroupParameter):
@@ -58,10 +69,10 @@ class BaseControls(MyGroupParameter):
         super().__init__(name='Base controls', type='BaseControls')
         self._pipeline = pipeline
 
-        # Change names to delineate source_controls as defined here and source_controls - gui.node_controls.source
+        # TODO: Change names to delineate source_controls as defined here and source_controls - gui.node_controls.source
         source_controls = SourceControls(pipeline=pipeline, name='Source')
-        processors_controls = ProcessorsControls(pipeline=pipeline, name='Processors')
-        outputs_controls = OutputsControls(pipeline=pipeline, name='Outputs')
+        processors_controls = ProcessorsControls(nodes=pipeline._processors, name='Processors')
+        outputs_controls = OutputsControls(nodes=pipeline._outputs, name='Outputs')
 
         self.source_controls = self.addChild(source_controls)
         self.processors_controls = self.addChild(processors_controls)

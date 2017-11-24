@@ -11,13 +11,16 @@ linear_filter = processors.LinearFilter(lower_cutoff=0.1, upper_cutoff=40)
 pipeline.add_processor(linear_filter)
 pipeline.add_processor(processors.InverseModel(method='MNE'))
 pipeline.add_processor(processors.EnvelopeExtractor())
-# pipeline.add_output(outputs.ThreeDeeBrain())
+pipeline.add_output(outputs.ThreeDeeBrain())
+pipeline.add_output(outputs.LSLStreamOutput())
 # pipeline.initialize_all_nodes()
 
 window = GUIWindow(pipeline=pipeline)
 window.init_ui()
 window.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
 window.show()
+
+window.initialize()
 
 base_controls = window._controls._base_controls
 source_controls = base_controls.source_controls
@@ -37,7 +40,7 @@ frequency = pipeline.frequency
 if __name__ == '__main__':
     import sys
 
-    timer.start(1000. / frequency / 4)
+    timer.start(1000. / frequency * 10)
 
     # TODO: this runs when in iPython. It should not.
     # Start Qt event loop unless running in interactive mode or using pyside.
