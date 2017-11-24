@@ -3,13 +3,51 @@ from collections import namedtuple
 from pyqtgraph.parametertree import parameterTypes, ParameterTree, Parameter
 
 from ..pipeline import Pipeline
-from ..nodes import sources as source_nodes
-from .node_controls import sources as source_node_controls
+from ..nodes import (
+    sources as source_nodes,
+    processors as processor_nodes,
+    outputs as output_nodes
+)
+from .node_controls import (
+    sources as source_controls,
+    processors as processors_controls,
+    outputs as outputs_controls
+)
 from ..helpers.pyqtgraph import MyGroupParameter
+from ..helpers.misc import class_name_of
+
+
+NodeControlClasses = namedtuple('NodeControlClasses', ['node_class', 'controls_class'])
 
 
 class ProcessorsControls(MyGroupParameter):
-    pass
+    SUPPORTED_PROCESSORS = [
+        NodeControlClasses(processor_nodes.LinearFilter, processors_controls.LinearFilterControls),
+        NodeControlClasses(processor_nodes.InverseModel, processors_controls.InverseModelControls),
+        NodeControlClasses(processor_nodes.EnvelopeExtractor, processors_controls.EnvelopeExtractorControls),
+    ]
+
+    def __init__(self, pipeline, **kwargs):
+        self._pipeline = pipeline
+        super().__init__(**kwargs)
+
+        for processor_node in pipeline._processors:
+            controls_class = self._find_controls_class_for_a_node(processor_node)
+            self.addChild(controls_class(processor_node=processor_node))
+
+    @classmethod
+    def _find_controls_class_for_a_node(cls, processor_node):
+        for node_control_classes in cls.SUPPORTED_PROCESSORS:
+            if isinstance(processor_node, node_control_classes.node_class):
+                return node_control_classes.controls_class
+
+        # Raise an error if processor node is not supported
+        msg = ("Node of class {0} is not supported by {1}.\n"
+               "Add NodeControlClasses(node_class, controls_class) to {1}.SUPPORTED_PROCESSORS").format(
+                class_name_of(processor_node), cls.__name__
+            )
+        raise ValueError(msg)
+
 
 class OutputsControls(MyGroupParameter):
     pass
