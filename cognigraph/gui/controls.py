@@ -92,13 +92,15 @@ class SourceControls(MyGroupParameter):
         self.addChild(self._invisible_placeholder_parameter)
 
     def _on_source_type_changed(self, param, value):
-        self.removeChild(self.source_controls)
+        try:
+            source_controls = self.source_controls
+            self.removeChild(source_controls)
+        except AttributeError:  # No source type has been chosen
+            pass
         if value != self.SOURCE_TYPE_PLACEHOLDER:
             source_classes = self.SOURCE_OPTIONS[value]
-            source_controls = source_classes.controls_class(pipeline=self._pipeline, name=self.SOURCE_CONTROLS_NAME)
-            self.addChild(source_controls)
-        else:
-            self.addChild(self._invisible_placeholder_parameter)
+            controls = source_classes.controls_class(pipeline=self._pipeline, name=self.SOURCE_CONTROLS_NAME)
+            self.source_controls = self.addChild(controls)
 
 
 class Controls(object):
