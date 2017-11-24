@@ -58,11 +58,14 @@ class BaseControls(MyGroupParameter):
         super().__init__(name='Base controls', type='BaseControls')
         self._pipeline = pipeline
 
+        # Change names to delineate source_controls as defined here and source_controls - gui.node_controls.source
         source_controls = SourceControls(pipeline=pipeline, name='Source')
         processors_controls = ProcessorsControls(pipeline=pipeline, name='Processors')
-        output_controls = OutputsControls(pipeline=pipeline, name='Outputs')
+        outputs_controls = OutputsControls(pipeline=pipeline, name='Outputs')
 
-        self.addChildren([source_controls, processors_controls, output_controls])
+        self.source_controls = self.addChild(source_controls)
+        self.processors_controls = self.addChild(processors_controls)
+        self.outputs_controls = self.addChild(outputs_controls)
 
 
 class SourceControls(MyGroupParameter):
