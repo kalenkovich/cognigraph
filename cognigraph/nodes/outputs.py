@@ -11,6 +11,7 @@ from scipy import sparse
 
 from .node import OutputNode
 from ..helpers.lsl import convert_numpy_format_to_lsl, convert_numpy_array_to_lsl_chunk, create_lsl_outlet
+from ..helpers.ring_buffer import RingBuffer
 from ..helpers.matrix_functions import last_sample
 from types import SimpleNamespace
 from vendor.pysurfer.smoothing_matrix import smoothing_matrix as calculate_smoothing_matrix, mesh_edges
@@ -53,6 +54,7 @@ class ThreeDeeBrain(OutputNode):
         self.limits_mode = limits_mode
         self.lock_limits = False
         self.buffer_length = buffer_length
+        self.limits_buffer = None  # type: RingBuffer
         self.take_abs = take_abs
         self.colormap_limits = SimpleNamespace(lower=None, upper=None)
 
@@ -62,7 +64,11 @@ class ThreeDeeBrain(OutputNode):
         mne_inverse_model_file_path = self.traverse_back_and_find('mne_inverse_model_file_path')
         self.brain_painter.initialize(mne_inverse_model_file_path)
 
-    def update(self):
+        frequency = self.traverse_back_and_find('frequency')
+        buffer_sample_count = np.int(self.buffer_length * frequency)
+        self.limits_buffer = RingBuffer(row_cnt=2, maxlen=buffer_sample_count)
+
+    def _update(self):
         sources = self.input_node.output
         if self.take_abs:
             sources = np.abs(sources)
