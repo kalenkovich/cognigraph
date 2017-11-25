@@ -20,12 +20,12 @@ window.init_ui()
 window.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
 window.show()
 
-window.initialize()
-
 base_controls = window._controls._base_controls
 source_controls = base_controls.source_controls
 processors_controls = base_controls.processors_controls
 outputs_controls = base_controls.outputs_controls
+
+window.initialize()
 
 
 def run():

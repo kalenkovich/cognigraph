@@ -18,17 +18,31 @@ from vendor.pysurfer.smoothing_matrix import smoothing_matrix as calculate_smoot
 
 
 class LSLStreamOutput(OutputNode):
+
+    def _check_value(self, key, value):
+        pass  # TODO: check that value as a string usable as a stream name
+
+    CHANGES_IN_THESE_REQUIRE_RESET = ('stream_name', )
+
+    UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = (
+        'source_name', 'frequency', 'dtype', 'channel_labels'
+    )
+
+    def reset(self):
+        # It is impossible to change then name of an already started stream so we have to initialize again
+        self.initialize()
+
     def __init__(self, stream_name=None):
         super().__init__()
-        self.stream_name = stream_name
+        self._provided_stream_name = stream_name
+        self.stream_name = None
         self._outlet = None
 
-    def initialize(self):
-        super().initialize()
+    def _initialize(self):
 
         # If no name was supplied we will use a modified version of the source name (a file or a stream name)
         source_name = self.traverse_back_and_find('source_name')
-        self.stream_name = self.stream_name or (source_name + '_output')
+        self.stream_name = self._provided_stream_name or (source_name + '_output')
 
         # Get other info from somewhere down the predecessor chain
         frequency = self.traverse_back_and_find('frequency')
@@ -39,18 +53,30 @@ class LSLStreamOutput(OutputNode):
         self._outlet = create_lsl_outlet(name=self.stream_name, frequency=frequency, channel_format=channel_format,
                                          channel_labels=channel_labels)
 
-    def update(self):
+    def _update(self):
         chunk = self.input_node.output
         lsl_chunk = convert_numpy_array_to_lsl_chunk(chunk)
         self._outlet.push_chunk(lsl_chunk)
 
 
 class ThreeDeeBrain(OutputNode):
+    def _check_value(self, key, value):
+        pass
+
+    CHANGES_IN_THESE_REQUIRE_RESET = ('buffer_length', 'take_abs', )
+
+    def reset(self):
+        self.limits_buffer.clear()
+
+    UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = (
+        'source_name', 'frequency', 'dtype', 'channel_labels'
+    )
+
     LIMITS_MODES = SimpleNamespace(GLOBAL='Global', LOCAL='Local', MANUAL='Manual')
 
     def __init__(self, take_abs=True, limits_mode=LIMITS_MODES.LOCAL, buffer_length=1, **brain_painter_kwargs):
         super().__init__()
-        self.colormap = None
+
         self.limits_mode = limits_mode
         self.lock_limits = False
         self.buffer_length = buffer_length
@@ -60,7 +86,7 @@ class ThreeDeeBrain(OutputNode):
 
         self.brain_painter = BrainPainter(mne_inverse_model_file_path=None, **brain_painter_kwargs)
 
-    def initialize(self):
+    def _initialize(self):
         mne_inverse_model_file_path = self.traverse_back_and_find('mne_inverse_model_file_path')
         self.brain_painter.initialize(mne_inverse_model_file_path)
 

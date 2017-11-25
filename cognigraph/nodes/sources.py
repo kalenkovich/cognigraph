@@ -6,6 +6,16 @@ from ..helpers.lsl import convert_lsl_chunk_to_numpy_array, convert_lsl_format_t
 
 class LSLStreamSource(SourceNode):
     """ Class for reading data from an LSL stream defined by its name """
+
+    CHANGES_IN_THESE_REQUIRE_RESET = ('source_name',)
+
+    def _check_value(self, key, value):
+        pass  # Whether we can find one stream with self.source_name will be checked on initialize  # TODO: move here
+
+    def reset(self):
+        # There is nothing to reset really. So we wil just go ahead and initialize
+        self.initialize()
+
     SECONDS_TO_WAIT_FOR_THE_STREAM = 0.5
 
     def __init__(self, stream_name=None):
@@ -13,10 +23,15 @@ class LSLStreamSource(SourceNode):
         self.source_name = stream_name
         self._inlet = None # type: lsl.StreamInlet
 
-    def set_stream_name(self, stream_name):
+    @property
+    def stream_name(self):
+        return self.source_name
+
+    @stream_name.setter
+    def stream_name(self, stream_name):
         self.source_name = stream_name
 
-    def initialize(self):
+    def _initialize(self):
 
         stream_infos = lsl.resolve_byprop('name', self.source_name, timeout=self.SECONDS_TO_WAIT_FOR_THE_STREAM)
         if len(stream_infos) == 0:
@@ -47,7 +62,7 @@ class LSLStreamSource(SourceNode):
                 single_channel_tag = single_channel_tag.next_sibling(name='channel')
             return labels
 
-    def update(self):
-        super().update()
+    def _update(self):
+        super()._update()
         lsl_chunk, timestamps = self._inlet.pull_chunk()
         self.output = convert_lsl_chunk_to_numpy_array(lsl_chunk)
