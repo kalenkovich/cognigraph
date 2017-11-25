@@ -19,9 +19,9 @@ def convert_numpy_format_to_lsl(numpy_channel_format: np.dtype):
 
 def create_lsl_outlet(name, frequency, channel_format, channel_labels, type=''):
     # Create StreamInfo
-    channel_cnt = len(channel_labels)
+    channel_count = len(channel_labels)
     source_id = str(uuid.uuid4())
-    info = lsl.StreamInfo(name=name, type=type, channel_count=channel_cnt, nominal_srate=frequency,
+    info = lsl.StreamInfo(name=name, type=type, channel_count=channel_count, nominal_srate=frequency,
                           channel_format=channel_format, source_id=source_id)
 
     # Add channel labels

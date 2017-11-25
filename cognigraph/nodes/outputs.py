@@ -6,26 +6,43 @@ import pyqtgraph.opengl as gl
 import numpy as np
 import nibabel as nib
 from matplotlib import cm
+from matplotlib.colors import Colormap as matplotlib_Colormap
 from scipy import sparse
 
 from .node import OutputNode
 from ..helpers.lsl import convert_numpy_format_to_lsl, convert_numpy_array_to_lsl_chunk, create_lsl_outlet
+from ..helpers.ring_buffer import RingBuffer
 from ..helpers.matrix_functions import last_sample
+from types import SimpleNamespace
 from vendor.pysurfer.smoothing_matrix import smoothing_matrix as calculate_smoothing_matrix, mesh_edges
 
 
 class LSLStreamOutput(OutputNode):
+
+    def _check_value(self, key, value):
+        pass  # TODO: check that value as a string usable as a stream name
+
+    CHANGES_IN_THESE_REQUIRE_RESET = ('stream_name', )
+
+    UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = (
+        'source_name', 'frequency', 'dtype', 'channel_labels'
+    )
+
+    def reset(self):
+        # It is impossible to change then name of an already started stream so we have to initialize again
+        self.initialize()
+
     def __init__(self, stream_name=None):
         super().__init__()
-        self.stream_name = stream_name
+        self._provided_stream_name = stream_name
+        self.stream_name = None
         self._outlet = None
 
-    def initialize(self):
-        super().initialize()
+    def _initialize(self):
 
         # If no name was supplied we will use a modified version of the source name (a file or a stream name)
         source_name = self.traverse_back_and_find('source_name')
-        self.stream_name = self.stream_name or (source_name + '_output')
+        self.stream_name = self._provided_stream_name or (source_name + '_output')
 
         # Get other info from somewhere down the predecessor chain
         frequency = self.traverse_back_and_find('frequency')
@@ -36,26 +53,48 @@ class LSLStreamOutput(OutputNode):
         self._outlet = create_lsl_outlet(name=self.stream_name, frequency=frequency, channel_format=channel_format,
                                          channel_labels=channel_labels)
 
-    def update(self):
+    def _update(self):
         chunk = self.input_node.output
         lsl_chunk = convert_numpy_array_to_lsl_chunk(chunk)
         self._outlet.push_chunk(lsl_chunk)
 
 
 class ThreeDeeBrain(OutputNode):
-    def __init__(self, take_abs=True, **brain_painter_kwargs):
+    def _check_value(self, key, value):
+        pass
+
+    CHANGES_IN_THESE_REQUIRE_RESET = ('buffer_length', 'take_abs', )
+
+    def reset(self):
+        self.limits_buffer.clear()
+
+    UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = (
+        'source_name', 'frequency', 'dtype', 'channel_labels'
+    )
+
+    LIMITS_MODES = SimpleNamespace(GLOBAL='Global', LOCAL='Local', MANUAL='Manual')
+
+    def __init__(self, take_abs=True, limits_mode=LIMITS_MODES.LOCAL, buffer_length=1, **brain_painter_kwargs):
         super().__init__()
-        self.colormap = None
-        self._brain_painter_kwargs = brain_painter_kwargs
-        self.brain_painter = None
+
+        self.limits_mode = limits_mode
+        self.lock_limits = False
+        self.buffer_length = buffer_length
+        self.limits_buffer = None  # type: RingBuffer
         self.take_abs = take_abs
-        self.colormap_limits = (None, None)
+        self.colormap_limits = SimpleNamespace(lower=None, upper=None)
 
-    def initialize(self):
+        self.brain_painter = BrainPainter(mne_inverse_model_file_path=None, **brain_painter_kwargs)
+
+    def _initialize(self):
         mne_inverse_model_file_path = self.traverse_back_and_find('mne_inverse_model_file_path')
-        self.brain_painter = BrainPainter(mne_inverse_model_file_path, **self._brain_painter_kwargs)
+        self.brain_painter.initialize(mne_inverse_model_file_path)
 
-    def update(self):
+        frequency = self.traverse_back_and_find('frequency')
+        buffer_sample_count = np.int(self.buffer_length * frequency)
+        self.limits_buffer = RingBuffer(row_cnt=2, maxlen=buffer_sample_count)
+
+    def _update(self):
         sources = self.input_node.output
         if self.take_abs:
             sources = np.abs(sources)
@@ -65,27 +104,57 @@ class ThreeDeeBrain(OutputNode):
 
     def _update_colormap_limits(self, sources):
         sources = last_sample(sources)
-        self.colormap_limits = (np.min(sources), np.max(sources))
+        self.colormap_limits.lower = np.min(sources)
+        self.colormap_limits.upper = np.max(sources)
 
     def _normalize_sources(self, last_sources):
-        minimum, maximum = self.colormap_limits
+        minimum = self.colormap_limits.lower
+        maximum = self.colormap_limits.upper
         return (last_sources - minimum) / (maximum - minimum)
+
+    @property
+    def widget(self):
+        if self.brain_painter.widget is not None:
+            return self.brain_painter.widget
+        else:
+            raise AttributeError('{} does not have widget yet. Probably has not been initialized')
 
 
 class BrainPainter(object):
-    def __init__(self, mne_inverse_model_file_path, threshold_pct=50, brain_colormap=cm.Greys, data_colormap=cm.Reds,
-                 show_curvature=True, surfaces_dir=None):
+    def __init__(self, mne_inverse_model_file_path, threshold_pct=50,
+                 brain_colormap: matplotlib_Colormap = cm.Greys,
+                 data_colormap: matplotlib_Colormap = cm.Reds,
+                 show_curvature=True, surfaces_dir=None, buffer_length=1):
+        """
+        This is the last step. Object of this class draws whatever data are given to it on the cortex mesh. No changes,
+        except for thresholding, are made.
+
+        :param threshold_pct: Only values exceeding this percentage threshold will be shown
+        :param show_curvature: If True, concave areas will be shown in darker grey, convex - in lighter
+        :param surfaces_dir: Path to the Fressurfer surf directory. If None, mne's sample's surfaces will be used.
+        """
 
         self.threshold_pct = threshold_pct
+        self.show_curvature = show_curvature
+
         self.brain_colormap = brain_colormap
         self.data_colormap = data_colormap
 
-        self.surfaces_dir = surfaces_dir or self._guess_surfaces_dir_based_on(mne_inverse_model_file_path)
+        self.surfaces_dir = surfaces_dir  # type: str
+        self.mesh_data = None  # type: gl.MeshData
+        self.smoothing_matrix = None  # type: np.ndarray
+        self.widget = None  # type: gl.GLViewWidget
+
+        self.background_colors = None  # type: np.ndarray  # N x 4
+        self.mesh_item = None  # type: gl.GLMeshItem
+
+    def initialize(self, mne_inverse_model_file_path):
+        self.surfaces_dir = self.surfaces_dir or self._guess_surfaces_dir_based_on(mne_inverse_model_file_path)
         self.mesh_data = self._get_mesh_data_from_surfaces_dir()
         self.smoothing_matrix = self._get_smoothing_matrix(mne_inverse_model_file_path)
         self.widget = self._create_widget()
 
-        self.background_colors = self._calculate_background_colors(show_curvature)
+        self.background_colors = self._calculate_background_colors(self.show_curvature)
         self.mesh_data.setVertexColors(self.background_colors)
         self.mesh_item = gl.GLMeshItem(meshdata=self.mesh_data, shader='shaded')
         self.widget.addItem(self.mesh_item)

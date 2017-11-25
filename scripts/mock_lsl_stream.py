@@ -33,7 +33,7 @@ channel_labels = (
     + channel_labels_neuromag[:meg_cnt]
     + ['Other {}'.format(i + 1) for i in range(other_cnt)]
 )
-channel_cnt = len(channel_labels)
+channel_count = len(channel_labels)
 
 
 outlet = create_lsl_outlet(name=name, type=stream_type, frequency=frequency, channel_format=channel_format,
@@ -41,7 +41,7 @@ outlet = create_lsl_outlet(name=name, type=stream_type, frequency=frequency, cha
 
 while True:
     try:
-        mysample = np.random.random((channel_cnt, 1))
+        mysample = np.random.random((channel_count, 1))
         outlet.push_sample(mysample)
         time.sleep(1/frequency)
     except:

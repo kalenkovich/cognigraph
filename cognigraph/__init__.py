@@ -7,4 +7,5 @@ __all__ = ["node", "pipeline"]
 
 TIME_AXIS = 1
 CHANNEL_AXIS = 1 - TIME_AXIS
+PYNFB_TIME_AXIS = 0
 

@@ -17,7 +17,7 @@ class PipelineTestingSuite(unittest.TestCase):
 
     def test_if_pipeline_works_at_all(self):
         pipeline = Pipeline()
-        pipeline.input = self.input_node
+        pipeline.source = self.input_node
         for processor_node in self.processor_nodes:
             pipeline.add_processor(processor_node=processor_node)
         pipeline.add_output(self.output_node)
@@ -81,8 +81,8 @@ inverse.update()
 # TODO: change to use TIME_AXIS
 assert(source.output.shape[1] == inverse.output.shape[1])
 assert(source.output.shape[0] != inverse.output.shape[0])
-assert(inverse.output.shape[0] == inverse.channel_cnt)
-assert(len(inverse.channel_labels) == inverse.channel_cnt)
+assert(inverse.output.shape[0] == inverse.channel_count)
+assert(len(inverse.channel_labels) == inverse.channel_count)
 
 
 # Visualize sources
