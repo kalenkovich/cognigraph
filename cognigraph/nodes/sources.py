@@ -12,10 +12,6 @@ class LSLStreamSource(SourceNode):
     def _check_value(self, key, value):
         pass  # Whether we can find one stream with self.source_name will be checked on initialize  # TODO: move here
 
-    def reset(self):
-        # There is nothing to reset really. So we wil just go ahead and initialize
-        self.initialize()
-
     SECONDS_TO_WAIT_FOR_THE_STREAM = 0.5
 
     def __init__(self, stream_name=None):
