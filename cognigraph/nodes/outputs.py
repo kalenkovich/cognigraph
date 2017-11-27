@@ -9,10 +9,11 @@ from matplotlib import cm
 from matplotlib.colors import Colormap as matplotlib_Colormap
 from scipy import sparse
 
+from .. import CHANNEL_AXIS
 from .node import OutputNode
 from ..helpers.lsl import convert_numpy_format_to_lsl, convert_numpy_array_to_lsl_chunk, create_lsl_outlet
 from ..helpers.ring_buffer import RingBuffer
-from ..helpers.matrix_functions import last_sample
+from ..helpers.matrix_functions import last_sample, make_time_dimension_second
 from types import SimpleNamespace
 from vendor.pysurfer.smoothing_matrix import smoothing_matrix as calculate_smoothing_matrix, mesh_edges
 
@@ -103,9 +104,21 @@ class ThreeDeeBrain(OutputNode):
         self.brain_painter.draw(normalized_sources)
 
     def _update_colormap_limits(self, sources):
-        sources = last_sample(sources)
-        self.colormap_limits.lower = np.min(sources)
-        self.colormap_limits.upper = np.max(sources)
+        self.limits_buffer.extend(np.array(
+            make_time_dimension_second(np.min(sources, axis=CHANNEL_AXIS)),
+            make_time_dimension_second(np.max(sources, axis=CHANNEL_AXIS)),
+        ))
+
+        if self.limits_mode == self.LIMITS_MODES.GLOBAL:
+            mins, maxs = self.limits_buffer.data
+            self.colormap_limits.lower = np.percentile(mins, q = 5)
+            self.colormap_limits.upper = np.percentile(maxs, q = 95)
+        elif self.limits_mode == self.LIMITS_MODES.LOCAL:
+            sources = last_sample(sources)
+            self.colormap_limits.lower = np.min(sources)
+            self.colormap_limits.upper = np.max(sources)
+        elif self.limits_mode == self.LIMITS_MODES.MANUAL:
+            pass
 
     def _normalize_sources(self, last_sources):
         minimum = self.colormap_limits.lower
