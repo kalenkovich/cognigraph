@@ -1,4 +1,4 @@
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 
 from pyqtgraph.parametertree import parameterTypes, ParameterTree, Parameter
 
@@ -80,15 +80,23 @@ class BaseControls(MyGroupParameter):
 
 
 class SourceControls(MyGroupParameter):
-    SOURCE_OPTIONS = {
-        'LSL stream': NodeControlClasses(source_nodes.LSLStreamSource,
-                                         source_controls.LSLStreamSourceControls),
-    }
+    """Represents a drop-down list with the names of supported source types. Selecting a type creates controls for that
+    type below the drop-down.
+    """
+
+    # Order is important. Entries with node subclasses must precede entries with the parent class
+    SOURCE_OPTIONS = OrderedDict((
+        ('LSL stream', NodeControlClasses(source_nodes.LSLStreamSource,
+                                          source_controls.LSLStreamSourceControls)),
+        ('Brainvision data', NodeControlClasses(source_nodes.BrainvisionSource,
+                                                source_controls.BrainvisionSourceControls)),
+    ))
+
     SOURCE_TYPE_COMBO_NAME = 'Source type: '
     SOURCE_TYPE_PLACEHOLDER = ''
     SOURCE_CONTROLS_NAME = 'source controls'
 
-    def __init__(self, pipeline, **kwargs):
+    def __init__(self, pipeline: Pipeline, **kwargs):
         self._pipeline = pipeline
         super().__init__(**kwargs)
 
@@ -97,6 +105,11 @@ class SourceControls(MyGroupParameter):
                                                          values=labels, value=labels[0])
         source_type_combo.sigValueChanged.connect(self._on_source_type_changed)
         self.source_type_combo = self.addChild(source_type_combo)
+
+        if pipeline.source is not None:
+            for source_option, classes in self.SOURCE_OPTIONS.items():
+                if isinstance(pipeline.source, classes.node_class):
+                    self.source_type_combo.setValue(source_option)
 
     def _on_source_type_changed(self, param, value):
         try:

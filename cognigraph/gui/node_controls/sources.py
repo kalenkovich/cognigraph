@@ -12,7 +12,7 @@ class LSLStreamSourceControls(MyGroupParameter):
 
         self._pipeline = pipeline
 
-        kwargs['title'] = 'LSL stream settings'
+        kwargs['title'] = 'LSL stream'
         super().__init__(**kwargs, )
 
         stream_names = [info.name() for info in pylsl.resolve_streams()]
@@ -33,3 +33,24 @@ class LSLStreamSourceControls(MyGroupParameter):
             self.setLimits(values)
         except ValueError:  # The placeholder option has already been removed
             pass
+
+
+class BrainvisionSourceControls(MyGroupParameter):
+    FILE_PATH_STR_NAME = 'Path to Brainvision file: '
+
+    def __init__(self, pipeline, **kwargs):
+        self._pipeline = pipeline
+
+        kwargs['title'] = 'Brainvision file'
+        super().__init__(**kwargs, )
+
+        try:
+            file_path = pipeline.source.file_path
+        except:
+            file_path = ''
+        file_path_str = parameterTypes.SimpleParameter(type='str', name=self.FILE_PATH_STR_NAME, value=file_path)
+        file_path_str.sigValueChanged.connect(self._on_file_path_changed)
+        self.file_path_str = self.addChild(file_path_str)
+
+    def _on_file_path_changed(self, param, value):
+        self._pipeline.source.file_path = value

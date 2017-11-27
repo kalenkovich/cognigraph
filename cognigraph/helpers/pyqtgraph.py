@@ -49,6 +49,31 @@ class MyGroupParameter(parameterTypes.GroupParameter):
         return self.widget
 
 
+class FileDialogParameterItem(parameterTypes.WidgetParameterItem):
+    def __init__(self, param, depth):
+        super().__init__(param, depth)
+        self.hideWidget = False
+
+    def makeWidget(self):
+
+        opts = self.param.opts.copy()
+        if 'limits' in opts:
+            opts['minimum'], opts['maximum'] = opts['limits']
+        else:
+            raise ValueError("You have to provide 'limits' for this parameter")
+        self.slider_widget = Slider(**opts)
+
+        self.slider_widget.sigChanged = self.slider_widget.slider.sliderReleased
+        self.slider_widget.value = self.slider_widget.value
+        self.slider_widget.setValue = self.slider_widget.setValue
+        return QtGui.QFileDialog()
+
+
+class FileDialogParameter(Parameter):
+    """Used for displaying a slider within the tree."""
+    itemClass = FileDialogParameterItem
+
+
 # All slider-related stuff was adapted from https://stackoverflow.com/a/42011414/3042770
 
 
