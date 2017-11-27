@@ -96,6 +96,7 @@ class Node(object):
         self.there_has_been_a_change = True  # We should however leave a message to the node after us.
 
     def _reset_or_reinitialize_if_needed(self):
+        """This function is called before each _update call"""
         if self._should_initialize is True:
             self.initialize()
         elif self._should_reset is True:
@@ -104,6 +105,7 @@ class Node(object):
         self._should_reset = False
 
     def _the_change_requires_reinitialization(self):
+        """Checks if anything important changed upstream wrt value captured at initialization"""
         for item, value in self._saved_from_upstream.items():
             if value != self.traverse_back_and_find(item):
                 return True
@@ -116,41 +118,13 @@ class SourceNode(Node):
     # There is no 'upstream' for the sources
     UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = ()
 
-    def __init__(self, seconds_to_live=None):
-        super().__init__()
-        self.frequency = None
-        self.dtype = None
-        self.channel_count = None
-        self.channel_labels = None
-        self.source_name = None
-
-        # TODO: remove this self-destruction nonsense
-        self._should_self_destruct = seconds_to_live is not None
-        if self._should_self_destruct:
-            self._birthtime = None
-            self._seconds_to_live = seconds_to_live
-            self._is_alive = True
-
-    @property
-    def is_alive(self):
-        # TODO: remove this self-destruction nonsense
-        if self._should_self_destruct:
-            current_time_in_s = time.time()
-            if current_time_in_s > self._birthtime + self._seconds_to_live:
-                self._is_alive = False
-        return self._is_alive
-
-    def _initialize(self):
-        if self._should_self_destruct:
-            self._birthtime = time.time()
-
-    def _update(self):
-        super()._update()
+    def reset(self):
+        # There is nothing to reset really. So we wil just go ahead and initialize
+        self.initialize()
 
 
 class ProcessorNode(Node):
-    pass  # TODO: implement
-
+    pass
 
 class OutputNode(Node):
-    pass  # TODO: implement
+    pass
