@@ -124,7 +124,8 @@ class SourceControls(MyGroupParameter):
             self.source_controls = self.addChild(controls)
 
             # Update source
-            self._pipeline.source = self.source_controls.create_node()
+            if not isinstance(self._pipeline.source, source_classes.node_class):
+                self._pipeline.source = self.source_controls.create_node()
 
 
 class Controls(object):
