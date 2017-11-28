@@ -1,12 +1,20 @@
-from pyqtgraph import QtCore
+import sys
+
+from pyqtgraph import QtCore, QtGui
 
 from cognigraph.pipeline import Pipeline
 from cognigraph.nodes import sources, processors, outputs
 from cognigraph import TIME_AXIS
 from cognigraph.gui.window import GUIWindow
 
+app = QtGui.QApplication(sys.argv)
+
 pipeline = Pipeline()
-pipeline.source = sources.LSLStreamSource(stream_name='cognigraph-mock-stream')
+
+#pipeline.source = sources.LSLStreamSource(stream_name='cognigraph-mock-stream')
+file_path = r"C:\Users\evgenii\Downloads\brainvision\Bulavenkova_A_2017-10-24_15-33-18_Rest.vhdr"
+pipeline.source = sources.BrainvisionSource(file_path=file_path)
+
 linear_filter = processors.LinearFilter(lower_cutoff=0.1, upper_cutoff=40)
 pipeline.add_processor(linear_filter)
 pipeline.add_processor(processors.InverseModel(method='MNE'))
@@ -30,7 +38,7 @@ window.initialize()
 
 def run():
     pipeline.update_all_nodes()
-    print(pipeline.source.output.shape[TIME_AXIS])
+    # print(pipeline.source.output.shape[TIME_AXIS])
 
 
 timer = QtCore.QTimer()

@@ -33,13 +33,19 @@ class LSLStreamSourceControls(SourceControls):
 
         stream_names = [info.name() for info in pylsl.resolve_streams()]
         values = [self.STREAM_NAME_PLACEHOLDER] + stream_names
+        try:
+            value = self.source_node.stream_name
+        except AttributeError:
+            value = self.STREAM_NAME_PLACEHOLDER
         stream_names_combo = parameterTypes.ListParameter(name=self.STREAM_NAMES_COMBO_NAME,
-                                                          values=values, value=self.STREAM_NAME_PLACEHOLDER)
+                                                          values=values, value=value)
         stream_names_combo.sigValueChanged.connect(self._on_stream_name_picked)
         self.stream_names_combo = self.addChild(stream_names_combo)
 
     def _on_stream_name_picked(self, param, value):
-        self.source_node.stream_name = value
+        # Update if needed
+        if self.source_node.stream_name != value:
+            self.source_node.stream_name = value
 
     def _remove_placeholder_option(self, default):
         stream_names_combo = self.param(self.STREAM_NAMES_COMBO_NAME)

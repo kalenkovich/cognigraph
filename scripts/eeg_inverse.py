@@ -43,6 +43,7 @@ fwd = mne.make_forward_solution(info=fake_info, trans=trans_file_path, src=sourc
 
 fwd_file_path = os.path.join(data_path, 'MEG', 'sample', 'sample_1005-eeg-oct-6-fwd.fif')
 mne.write_forward_solution(fwd_file_path, fwd)
+fwd = mne.read_forward_solution(fwd_file_path)
 
 cov = mne.Covariance(data=np.identity(fake_info['nchan']),
                      names=fake_info['ch_names'],
@@ -51,5 +52,6 @@ cov = mne.Covariance(data=np.identity(fake_info['nchan']),
                      nfree=1)
 
 inv = mne.minimum_norm.make_inverse_operator(fake_info, fwd, cov)
-fwd_file_path = os.path.join(data_path, 'MEG', 'sample', 'sample_1005-eeg-oct-6-eeg-inv.fif')
-mne.minimum_norm.write_inverse_operator(fwd_file_path, inv=inv)
+inv_file_path = os.path.join(data_path, 'MEG', 'sample', 'sample_1005-eeg-oct-6-eeg-inv.fif')
+mne.minimum_norm.write_inverse_operator(inv_file_path, inv=inv)
+
