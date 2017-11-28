@@ -1,6 +1,7 @@
 from typing import List
 
-from cognigraph.nodes.node import Node, SourceNode, ProcessorNode, OutputNode
+from . import TIME_AXIS
+from .nodes.node import Node, SourceNode, ProcessorNode, OutputNode
 from .helpers.decorators import accepts
 from .helpers.misc import class_name_of
 
@@ -89,6 +90,8 @@ class Pipeline(object):
     def update_all_nodes(self):
         for node in self.all_nodes:
             node.update()
+            if self.source is node:
+                print(node.output.shape[TIME_AXIS])
 
     def run(self):
         while self.source.is_alive:  # TODO: also stop if all outputs are dead
