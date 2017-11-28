@@ -65,9 +65,9 @@ class Node(object):
 
         self._update()
 
-        # Discard input
-        if self.input_node is not None:
-            self.input_node.output = None
+        # Discard input  # This does not work when there are multiple descendants  # TODO: come up with a way
+        # if self.input_node is not None:
+        #     self.input_node.output = None
 
     def _update(self):
         raise NotImplementedError
