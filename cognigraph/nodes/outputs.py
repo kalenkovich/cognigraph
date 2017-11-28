@@ -70,7 +70,7 @@ class ThreeDeeBrain(OutputNode):
         self.limits_buffer.clear()
 
     UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = (
-        'source_name', 'frequency', 'dtype', 'channel_labels'
+        'mne_inverse_model_file_path', 'channel_labels'
     )
 
     LIMITS_MODES = SimpleNamespace(GLOBAL='Global', LOCAL='Local', MANUAL='Manual')
@@ -104,10 +104,10 @@ class ThreeDeeBrain(OutputNode):
         self.brain_painter.draw(normalized_sources)
 
     def _update_colormap_limits(self, sources):
-        self.limits_buffer.extend(np.array(
+        self.limits_buffer.extend(np.array([
             make_time_dimension_second(np.min(sources, axis=CHANNEL_AXIS)),
             make_time_dimension_second(np.max(sources, axis=CHANNEL_AXIS)),
-        ))
+        ]))
 
         if self.limits_mode == self.LIMITS_MODES.GLOBAL:
             mins, maxs = self.limits_buffer.data
@@ -165,7 +165,12 @@ class BrainPainter(object):
         self.surfaces_dir = self.surfaces_dir or self._guess_surfaces_dir_based_on(mne_inverse_model_file_path)
         self.mesh_data = self._get_mesh_data_from_surfaces_dir()
         self.smoothing_matrix = self._get_smoothing_matrix(mne_inverse_model_file_path)
-        self.widget = self._create_widget()
+
+        if self.widget is None:
+            self.widget = self._create_widget()
+        else:  # Do not recreate the widget, just clear it
+            for item in self.widget.items:
+                self.widget.removeItem(item)
 
         self.background_colors = self._calculate_background_colors(self.show_curvature)
         self.mesh_data.setVertexColors(self.background_colors)
