@@ -37,6 +37,7 @@ class Pipeline(object):
     @accepts(object, SourceNode)
     def source(self, input_node):
         self._source = input_node
+        self._reconnect_the_first_processor(input_node)
         self._reconnect_outputs_to_last_node()  # In case some outputs were added before anything else
 
     @property
@@ -105,3 +106,7 @@ class Pipeline(object):
             self._processors[0].input_node = self.source
         except IndexError:  # No processors have been added yet
             pass
+
+    def _reconnect_the_first_processor(self, source_node):
+        if len(self._processors) > 0:
+            self._processors[0].input_node = source_node

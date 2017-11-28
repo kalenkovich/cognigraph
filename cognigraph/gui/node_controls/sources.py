@@ -2,18 +2,34 @@ from pyqtgraph.parametertree import parameterTypes
 import pylsl
 
 from ...helpers.pyqtgraph import MyGroupParameter
+from ...nodes.sources import LSLStreamSource, BrainvisionSource
 
 
-class LSLStreamSourceControls(MyGroupParameter):
+class SourceControls(MyGroupParameter):
+    @property
+    def SOURCE_CLASS(self):
+        raise NotImplementedError
+
+    def __init__(self, pipeline, **kwargs):
+        self._pipeline = pipeline
+        self.source_node = pipeline.source  # type: self.SOURCE_CLASS
+        super().__init__(**kwargs)
+
+    def create_node(self):
+        self.source_node = self.SOURCE_CLASS()
+        return self.source_node
+
+
+class LSLStreamSourceControls(SourceControls):
+    SOURCE_CLASS = LSLStreamSource
+
     STREAM_NAME_PLACEHOLDER = 'Click here to choose a stream'
     STREAM_NAMES_COMBO_NAME = 'Choose a stream: '
 
     def __init__(self, pipeline, **kwargs):
 
-        self._pipeline = pipeline
-
         kwargs['title'] = 'LSL stream'
-        super().__init__(**kwargs, )
+        super().__init__(pipeline, **kwargs)
 
         stream_names = [info.name() for info in pylsl.resolve_streams()]
         values = [self.STREAM_NAME_PLACEHOLDER] + stream_names
@@ -23,7 +39,7 @@ class LSLStreamSourceControls(MyGroupParameter):
         self.stream_names_combo = self.addChild(stream_names_combo)
 
     def _on_stream_name_picked(self, param, value):
-        pass
+        self.source_node.stream_name = value
 
     def _remove_placeholder_option(self, default):
         stream_names_combo = self.param(self.STREAM_NAMES_COMBO_NAME)
@@ -35,14 +51,15 @@ class LSLStreamSourceControls(MyGroupParameter):
             pass
 
 
-class BrainvisionSourceControls(MyGroupParameter):
+class BrainvisionSourceControls(SourceControls):
+    SOURCE_CLASS = BrainvisionSource
+
     FILE_PATH_STR_NAME = 'Path to Brainvision file: '
 
     def __init__(self, pipeline, **kwargs):
-        self._pipeline = pipeline
 
         kwargs['title'] = 'Brainvision file'
-        super().__init__(**kwargs, )
+        super().__init__(pipeline, **kwargs)
 
         try:
             file_path = pipeline.source.file_path

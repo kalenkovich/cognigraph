@@ -115,6 +115,7 @@ class BrainvisionSource(SourceNode):
             vhdr_file_path = os.path.splitext(self.file_path)[0] + '.vhdr'
             self.data, self.frequency, self.channel_labels = \
                 read_brain_vision_data(vhdr_file_path=vhdr_file_path, time_axis=TIME_AXIS)
+            self.channel_count = len(self.channel_labels)
 
     def _update(self):
         current_time = time.time()

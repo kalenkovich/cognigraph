@@ -118,9 +118,13 @@ class SourceControls(MyGroupParameter):
         except AttributeError:  # No source type has been chosen
             pass
         if value != self.SOURCE_TYPE_PLACEHOLDER:
+            # Update source controls
             source_classes = self.SOURCE_OPTIONS[value]
             controls = source_classes.controls_class(pipeline=self._pipeline, name=self.SOURCE_CONTROLS_NAME)
             self.source_controls = self.addChild(controls)
+
+            # Update source
+            self._pipeline.source = self.source_controls.create_node()
 
 
 class Controls(object):
