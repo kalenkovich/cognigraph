@@ -65,7 +65,6 @@ class LSLStreamSource(SourceNode):
             return labels
 
     def _update(self):
-        super()._update()
         lsl_chunk, timestamps = self._inlet.pull_chunk()
         self.output = convert_lsl_chunk_to_numpy_array(lsl_chunk)
 
@@ -73,6 +72,8 @@ class LSLStreamSource(SourceNode):
 class BrainvisionSource(SourceNode):
     SUPPORTED_EXTENSIONS = ('.vhdr', '.eeg', '.vmrk')
     CHANGES_IN_THESE_REQUIRE_RESET = ('source_name', )
+
+    MAX_SAMPLES_IN_CHUNK = 1024
 
     def __init__(self, file_path=None):
         super().__init__()
@@ -115,9 +116,13 @@ class BrainvisionSource(SourceNode):
             vhdr_file_path = os.path.splitext(self.file_path)[0] + '.vhdr'
             self.data, self.frequency, self.channel_labels = \
                 read_brain_vision_data(vhdr_file_path=vhdr_file_path, time_axis=TIME_AXIS)
+            self.dtype = self.data.dtype
             self.channel_count = len(self.channel_labels)
 
     def _update(self):
+        if self.data is None:
+            return
+
         current_time = time.time()
 
         if self._time_of_the_last_update is not None:
@@ -126,6 +131,7 @@ class BrainvisionSource(SourceNode):
             self._time_of_the_last_update = current_time
             max_samples_in_chunk = np.int64(seconds_since_last_update * self.frequency)  # Actual number can be lower if
             # we are at the end of file and not looping
+            max_samples_in_chunk = min(max_samples_in_chunk, self.MAX_SAMPLES_IN_CHUNK)  # can't process fast enough
             indices = self._samples_already_read + np.arange(max_samples_in_chunk)
 
             samples_in_data = self.data.shape[TIME_AXIS]
