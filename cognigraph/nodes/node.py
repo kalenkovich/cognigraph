@@ -36,7 +36,12 @@ class Node(object):
     def initialize(self):
         self._saved_from_upstream = {item: self.traverse_back_and_find(item) for item
                                      in self.UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION}
+
+        # Attribute setting inside _initialize should not result in reset
+        old, self.CHANGES_IN_THESE_REQUIRE_RESET = self.CHANGES_IN_THESE_REQUIRE_RESET, ()
         self._initialize()
+        self._should_initialize = False
+        self.CHANGES_IN_THESE_REQUIRE_RESET = old
 
     def _initialize(self):
         raise NotImplementedError
@@ -59,6 +64,10 @@ class Node(object):
         self._reset_or_reinitialize_if_needed()  # Needed - because of a possible change in this node or upstream
 
         self._update()
+
+        # Discard input
+        if self.input_node is not None:
+            self.input_node.output = None
 
     def _update(self):
         raise NotImplementedError
@@ -124,7 +133,19 @@ class SourceNode(Node):
 
 
 class ProcessorNode(Node):
-    pass
+    """Still an abstract class. Initially existed for clarity of inheritance only. Now handles empty inputs."""
+    def update(self):
+        if self.input_node.output is None or self.input_node.output.size == 0:
+            self.output = None
+            return
+        else:
+            super().update()
+
 
 class OutputNode(Node):
-    pass
+    """Still an abstract class. Initially existed for clarity of inheritance only. Now handles empty inputs."""
+    def update(self):
+        if self.input_node.output is None or self.input_node.output.size == 0:
+            return
+        else:
+            super().update()
