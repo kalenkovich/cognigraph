@@ -6,6 +6,7 @@ from pylsl.pylsl import fmt2string, string2fmt
 
 from .. import TIME_AXIS
 
+string2fmt['float64'] = string2fmt['double64']
 LSL_TIME_DIMENSION_ID = 0
 
 
