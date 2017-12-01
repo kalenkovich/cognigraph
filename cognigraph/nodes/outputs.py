@@ -1,21 +1,21 @@
 import os
+from types import SimpleNamespace
 
 import mne
-from mne.datasets import sample
-import pyqtgraph.opengl as gl
-import numpy as np
 import nibabel as nib
+import numpy as np
+import pyqtgraph.opengl as gl
 from matplotlib import cm
 from matplotlib.colors import Colormap as matplotlib_Colormap
+from mne.datasets import sample
 from scipy import sparse
 
-from .. import CHANNEL_AXIS
+from ..helpers.pysurfer.smoothing_matrix import smoothing_matrix as calculate_smoothing_matrix, mesh_edges
 from .node import OutputNode
+from .. import CHANNEL_AXIS
 from ..helpers.lsl import convert_numpy_format_to_lsl, convert_numpy_array_to_lsl_chunk, create_lsl_outlet
-from ..helpers.ring_buffer import RingBuffer
 from ..helpers.matrix_functions import last_sample, make_time_dimension_second
-from types import SimpleNamespace
-from vendor.pysurfer.smoothing_matrix import smoothing_matrix as calculate_smoothing_matrix, mesh_edges
+from ..helpers.ring_buffer import RingBuffer
 
 
 class LSLStreamOutput(OutputNode):
