@@ -29,7 +29,7 @@ class LSLStreamOutput(OutputNode):
         'source_name', 'frequency', 'dtype', 'channel_labels'
     )
 
-    def reset(self):
+    def _reset(self):
         # It is impossible to change then name of an already started stream so we have to initialize again
         self.initialize()
 
@@ -66,7 +66,7 @@ class ThreeDeeBrain(OutputNode):
 
     CHANGES_IN_THESE_REQUIRE_RESET = ('buffer_length', 'take_abs', )
 
-    def reset(self):
+    def _reset(self):
         self.limits_buffer.clear()
 
     UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = (

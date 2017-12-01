@@ -49,7 +49,7 @@ class Node(object):
     def __setattr__(self, key, value):
         self._check_value(key, value)
         if key in self.CHANGES_IN_THESE_REQUIRE_RESET:
-            self._should_reset = 1
+            self._should_reset = True
             self.there_has_been_a_change = True  # This is a message for the next node
         super().__setattr__(key, value)
 
@@ -73,6 +73,13 @@ class Node(object):
         raise NotImplementedError
 
     def reset(self):
+        # Attribute setting inside _initialize should not result in reset
+        old, self.CHANGES_IN_THESE_REQUIRE_RESET = self.CHANGES_IN_THESE_REQUIRE_RESET, ()
+        self._initialize()
+        self._should_reset = False
+        self.CHANGES_IN_THESE_REQUIRE_RESET = old
+
+    def _reset(self):
         raise NotImplementedError
         
     def traverse_back_and_find(self, item: str):
@@ -109,7 +116,7 @@ class Node(object):
         if self._should_initialize is True:
             self.initialize()
         elif self._should_reset is True:
-            self.reset()
+            self._reset()
         self._should_initialize = False
         self._should_reset = False
 
@@ -127,7 +134,7 @@ class SourceNode(Node):
     # There is no 'upstream' for the sources
     UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = ()
 
-    def reset(self):
+    def _reset(self):
         # There is nothing to reset really. So we wil just go ahead and initialize
         self.initialize()
 
