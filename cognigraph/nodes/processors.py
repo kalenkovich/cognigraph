@@ -22,8 +22,8 @@ class InverseModel(ProcessorNode):
             if value <= 0:
                 raise ValueError('snr (signal-to-noise ratio) must be a positive number. See mne-python docs.')
 
-    def reset(self):
-        # There is not much point in doing a special reset here. It is a difference of two assignments.
+    def _reset(self):
+        self.mne_inverse_model_file_path = self._user_provided_inverse_model_file_path
         self.initialize()
 
     SUPPORTED_METHODS = ['MNE', 'dSPM', 'sLORETA']
@@ -31,12 +31,21 @@ class InverseModel(ProcessorNode):
     def __init__(self, mne_inverse_model_file_path=None, snr=1.0, method='MNE'):
         super().__init__()
         self._inverse_model_matrix = None
-        self.mne_inverse_model_file_path = mne_inverse_model_file_path
+        self._user_provided_inverse_model_file_path = mne_inverse_model_file_path
+        self._mne_inverse_model_file_path = mne_inverse_model_file_path
         self.snr = snr
         self.method = method
 
         self.channel_labels = None
         self.channel_count = None
+
+    @property
+    def mne_inverse_model_file_path(self):
+        return self._mne_inverse_model_file_path
+
+    @mne_inverse_model_file_path.setter
+    def mne_inverse_model_file_path(self, value):
+        self._user_provided_inverse_model_file_path = self._mne_inverse_model_file_path = value
 
     def _update(self):
         input_array = self.input_node.output
@@ -49,12 +58,12 @@ class InverseModel(ProcessorNode):
 
     def _initialize(self):
         channel_labels = self.traverse_back_and_find('channel_labels')
-        if self.mne_inverse_model_file_path is None:
-            self._inverse_model_matrix, self.mne_inverse_model_file_path = \
+        if self._user_provided_inverse_model_file_path is None:
+            self._inverse_model_matrix, self._mne_inverse_model_file_path = \
                 get_inverse_model_matrix_from_labels(channel_labels, snr=self.snr, method=self.method)
         else:
-            self._inverse_model_matrix = get_inverse_model_matrix(self.mne_inverse_model_file_path, channel_labels,
-                                                                  snr=self.snr, method=self.method)
+            self._inverse_model_matrix = get_inverse_model_matrix(self._user_provided_inverse_model_file_path,
+                                                                  channel_labels, snr=self.snr, method=self.method)
 
         self.channel_count = self._inverse_model_matrix.shape[0]
         self.channel_labels = ['vertex #{}'.format(i + 1) for i in range(self.channel_count)]
@@ -77,7 +86,7 @@ class LinearFilter(ProcessorNode):
             if value < 0:
                 raise ValueError('Upper cutoff must be a positive number')
 
-    def reset(self):
+    def _reset(self):
         self._linear_filter.reset()
 
     def __init__(self, lower_cutoff, upper_cutoff):
@@ -114,7 +123,7 @@ class EnvelopeExtractor(ProcessorNode):
             if value not in self.SUPPORTED_METHODS:
                 raise ValueError('Method {} is not supported. We support only {}'.format(value, self.SUPPORTED_METHODS))
 
-    def reset(self):
+    def _reset(self):
         self._envelope_extractor.reset()
 
     UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = ('channel_count',)
@@ -167,7 +176,7 @@ def pynfb_filter_based_processor_class(pynfb_filter_class):
         def UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION(self) -> Tuple[str]:
             pass
 
-        def reset(self):
+        def _reset(self):
             pass
 
         def __init__(self):
