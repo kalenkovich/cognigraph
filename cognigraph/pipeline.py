@@ -90,7 +90,7 @@ class Pipeline(object):
     def update_all_nodes(self):
         for node in self.all_nodes:
             node.update()
-            if self.source is node:
+            if node is self.source and node.output is not None and node.output.size > 0:
                 print(node.output.shape[TIME_AXIS])
 
     def run(self):
