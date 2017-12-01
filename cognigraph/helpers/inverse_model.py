@@ -16,14 +16,17 @@ def _fake_standard_1005_info(channel_labels):
     montage_labels_upper = [label.upper() for label in montage_1005.ch_names]
     ch_types = ['eeg' if label.upper() in montage_labels_upper else 'misc'
                 for label in channel_labels]
-    fake_info = mne.create_info(ch_names=channel_labels, sfreq=1000, ch_types=ch_types, montage=montage_1005)
+    fake_info = mne.create_info(ch_names=channel_labels, sfreq=1000, ch_types=ch_types,)
     return fake_info
+
 
 def _make_standard_1005_inverse_operator(channel_labels):
 
     forward = mne.read_forward_solution(standard_1005_forward_file_path)
     fake_info = _fake_standard_1005_info(channel_labels)
-    cov = mne.Covariance(data=np.identity(fake_info['nchan']),
+    G = forward['sol']['data']
+    q = np.trace(G.dot(G.T)) / G.shape[0]
+    cov = mne.Covariance(data=(q * np.identity(fake_info['nchan'])),  # G.dot(G.T) and cov now have one scale
                          names=fake_info['ch_names'],
                          bads=fake_info['bads'],
                          projs=fake_info['projs'],
@@ -37,20 +40,18 @@ def get_inverse_model_matrix_from_labels(channel_labels, snr, method):
     montage_labels_upper = [montage_label.upper() for montage_label in montage_1005.ch_names]
 
     if max(label.startswith('MEG ') for label in channel_labels) is True:
-        # sample.data_path() will also download 1.5 Gb so call it only in this branch
 
         inverse_operator = read_inverse_operator(neuromag_inverse_file_path)
         mne_inverse_model_file_path = neuromag_inverse_file_path
-        full_inverse_model_matrix = _matrix_from_inverse_operator(inverse_operator, snr, method)
-        inverse_model_matrix = _pick_channels_from_matrix(full_inverse_model_matrix, channel_labels,
-                                                          inverse_operator['info']['ch_names'])
-
 
     elif any([channel_label.upper() in montage_labels_upper for channel_label in channel_labels]):
 
         inverse_operator = _make_standard_1005_inverse_operator(channel_labels)
         mne_inverse_model_file_path = standard_1005_inverse_file_path
-        inverse_model_matrix = _matrix_from_inverse_operator(inverse_operator, snr, method)
+
+    full_inverse_model_matrix = _matrix_from_inverse_operator(inverse_operator, snr, method)
+    inverse_model_matrix = _pick_channels_from_matrix(full_inverse_model_matrix, channel_labels,
+                                                      inverse_operator['info']['ch_names'])
 
     return inverse_model_matrix, mne_inverse_model_file_path
 
