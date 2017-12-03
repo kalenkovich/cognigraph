@@ -24,4 +24,9 @@ put_time_dimension_back_from_second.__doc__ = make_time_dimension_second.__doc__
 
 
 def last_sample(ndarray: np.ndarray):
-    return ndarray.take(indices=(-1), axis=TIME_AXIS)
+    if TIME_AXIS == 1:
+        return ndarray[:, -1]
+    elif TIME_AXIS == 0:
+        return ndarray[-1, :]
+    else:
+        raise ValueError
