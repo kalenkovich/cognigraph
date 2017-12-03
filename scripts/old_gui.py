@@ -12,10 +12,10 @@ app = QtGui.QApplication(sys.argv)
 pipeline = Pipeline()
 
 #pipeline.source = sources.LSLStreamSource(stream_name='cognigraph-mock-stream')
-file_path = r"C:\Users\evgenii\Downloads\brainvision\Bulavenkova_A_2017-10-24_15-33-18_Rest.vhdr"
+file_path = r"/home/evgenii/Downloads/brainvision/Bulavenkova_A_2017-10-24_15-33-18_Rest.vhdr"
 pipeline.source = sources.BrainvisionSource(file_path=file_path)
 
-linear_filter = processors.LinearFilter(lower_cutoff=0.1, upper_cutoff=40)
+linear_filter = processors.LinearFilter(lower_cutoff=1, upper_cutoff=40)
 pipeline.add_processor(linear_filter)
 pipeline.add_processor(processors.InverseModel(method='MNE'))
 pipeline.add_processor(processors.EnvelopeExtractor())
@@ -44,11 +44,12 @@ def run():
 timer = QtCore.QTimer()
 timer.timeout.connect(run)
 frequency = pipeline.frequency
+timer.setInterval(1000. / frequency * 10)
 
 if __name__ == '__main__':
     import sys
 
-    timer.start(1000. / frequency * 10)
+    timer.start()
 
     # TODO: this runs when in iPython. It should not.
     # Start Qt event loop unless running in interactive mode or using pyside.
