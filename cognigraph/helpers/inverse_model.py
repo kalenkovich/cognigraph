@@ -85,7 +85,7 @@ def _matrix_from_inverse_operator(inverse_operator, snr, method) -> np.ndarray:
 
     # Applying inverse modelling to an identity matrix gives us the forward model matrix
     lambda2 = 1.0 / snr ** 2
-    stc = mne.minimum_norm.apply_inverse_raw(dummy_raw, inverse_operator, lambda2, method)
+    stc = mne.minimum_norm.apply_inverse_raw(dummy_raw, inverse_operator, lambda2, method, pick_ori='normal')
 
     return stc.data
 
