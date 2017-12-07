@@ -234,6 +234,11 @@ class SourceNode(Node):
     def _reset(self):
         # There is nothing to reset really. So we wil just go ahead and initialize
         self.initialize()
+        output_history_is_no_longer_valid = True
+        return output_history_is_no_longer_valid
+
+    def _on_input_history_invalidation(self):
+        pass
 
 
 class ProcessorNode(Node):
