@@ -1,4 +1,5 @@
 from typing import Tuple, Dict
+from contextlib import contextmanager
 
 import numpy as np
 
@@ -93,18 +94,14 @@ class Node(object):
         self._saved_from_upstream = {item: self.traverse_back_and_find(item) for item
                                      in self.UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION}
 
-        # Attribute setting inside _initialize should not result in reset
-        old, self.CHANGES_IN_THESE_REQUIRE_RESET = self.CHANGES_IN_THESE_REQUIRE_RESET, ()
+        with self.not_triggering_reset:
+            self._initialize()
+            self._no_pending_changes = True  # Set all the resetting flags to false
 
-        self._initialize()
-        self._no_pending_changes = True  # Set all the resetting flags to false
-
-        # Tell the receivers about what has happened
-        message = Message(there_has_been_a_change=True,
-                          output_history_is_no_longer_valid=True)
-        self._deliver_a_message_to_receivers(message)
-
-        self.CHANGES_IN_THESE_REQUIRE_RESET = old
+            # Tell the receivers about what has happened
+            message = Message(there_has_been_a_change=True,
+                              output_history_is_no_longer_valid=True)
+            self._deliver_a_message_to_receivers(message)
 
     def _initialize(self):
         """Prepares everything for the first update. If called again, should remove all the traces from the past"""
@@ -158,18 +155,13 @@ class Node(object):
         if self._should_reinitialize is False:
             raise ValueError('Trying to reset even though there is no indication for it.')
 
-        # Attribute setting inside _reset should not result in reset
-        old, self.CHANGES_IN_THESE_REQUIRE_RESET = self.CHANGES_IN_THESE_REQUIRE_RESET, ()
+        with self.not_triggering_reset:
+            output_history_is_no_longer_valid = self._reset()
+            self._should_reset = False
 
-        output_history_is_no_longer_valid = self._reset()
-        self._should_reset = False
-
-        # Tell the receivers about what has happened
-        message = Message(there_has_been_a_change=True,
-                          output_history_is_no_longer_valid=output_history_is_no_longer_valid)
-        self._deliver_a_message_to_receivers(message)
-
-        self.CHANGES_IN_THESE_REQUIRE_RESET = old
+            # Tell the receivers about what has happened
+            message = Message(there_has_been_a_change=True,
+                              output_history_is_no_longer_valid=output_history_is_no_longer_valid)
 
     def _reset(self) -> bool:
         """Does what needs to be done when one of the self.CHANGES_IN_THESE_REQUIRE_RESET has been changed
@@ -181,18 +173,14 @@ class Node(object):
         if self._input_history_is_no_longer_valid is False:
             raise ValueError('Trying to flush history even though there is no indication for it.')
 
-        # Attribute setting inside _on_input_history_invalidation should not result in reset
-        old, self.CHANGES_IN_THESE_REQUIRE_RESET = self.CHANGES_IN_THESE_REQUIRE_RESET, ()
+        with self.not_triggering_reset:
+            self._on_input_history_invalidation()
+            self._input_history_is_no_longer_valid = False
 
-        self._on_input_history_invalidation()
-        self._input_history_is_no_longer_valid = False
-
-        # Tell the receivers about what has happened
-        message = Message(there_has_been_a_change=True,
-                          output_history_is_no_longer_valid=True)
-        self._deliver_a_message_to_receivers(message)
-
-        self.CHANGES_IN_THESE_REQUIRE_RESET = old
+            # Tell the receivers about what has happened
+            message = Message(there_has_been_a_change=True,
+                              output_history_is_no_longer_valid=True)
+            self._deliver_a_message_to_receivers(message)
 
     def _on_input_history_invalidation(self):
         """If the node state is dependent on previous inputs, reset whatever relies on them."""
@@ -217,6 +205,14 @@ class Node(object):
             super().__setattr__('_should_reset', True)
             super().__setattr__('there_has_been_a_change', True)
         super().__setattr__(key, value)
+
+    @contextmanager
+    def not_triggering_reset(self):
+        """Change of attributes CHANGES_IN_THESE_REQUIRE_RESET should trigger reset() but not from within the class.
+        Use this context manager to suspend reset() triggering."""
+        backup, self.CHANGES_IN_THESE_REQUIRE_RESET = self.CHANGES_IN_THESE_REQUIRE_RESET, ()
+        yield
+        self.CHANGES_IN_THESE_REQUIRE_RESET = backup
 
     def _check_value(self, key, value):
         raise NotImplementedError
