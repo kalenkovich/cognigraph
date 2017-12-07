@@ -49,8 +49,8 @@ class Node(object):
     def __setattr__(self, key, value):
         self._check_value(key, value)
         if key in self.CHANGES_IN_THESE_REQUIRE_RESET:
-            self._should_reset = True
-            self.there_has_been_a_change = True  # This is a message for the next node
+            super().__setattr__('_should_reset', True)
+            super().__setattr__('there_has_been_a_change', True)  # This is a message for the next node
         super().__setattr__(key, value)
 
     def _check_value(self, key, value):
