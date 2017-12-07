@@ -58,7 +58,7 @@ brain = ThreeDeeBrain()
 brain.input_node = inverse
 brain.initialize()
 
-brain.brain_painter.widget.show()
+brain._brain_painter.widget.show()
 brain.update()
 
 

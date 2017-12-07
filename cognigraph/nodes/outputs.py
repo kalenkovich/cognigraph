@@ -67,7 +67,7 @@ class ThreeDeeBrain(OutputNode):
     CHANGES_IN_THESE_REQUIRE_RESET = ('buffer_length', 'take_abs', )
 
     def _reset(self):
-        self.limits_buffer.clear()
+        self._limits_buffer.clear()
 
     UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = (
         'mne_inverse_model_file_path', 'channel_labels'
@@ -81,19 +81,19 @@ class ThreeDeeBrain(OutputNode):
         self.limits_mode = limits_mode
         self.lock_limits = False
         self.buffer_length = buffer_length
-        self.limits_buffer = None  # type: RingBuffer
         self.take_abs = take_abs
         self.colormap_limits = SimpleNamespace(lower=None, upper=None)
 
-        self.brain_painter = BrainPainter(mne_inverse_model_file_path=None, **brain_painter_kwargs)
+        self._limits_buffer = None  # type: RingBuffer
+        self._brain_painter = BrainPainter(mne_inverse_model_file_path=None, **brain_painter_kwargs)
 
     def _initialize(self):
         mne_inverse_model_file_path = self.traverse_back_and_find('mne_inverse_model_file_path')
-        self.brain_painter.initialize(mne_inverse_model_file_path)
+        self._brain_painter.initialize(mne_inverse_model_file_path)
 
         frequency = self.traverse_back_and_find('frequency')
         buffer_sample_count = np.int(self.buffer_length * frequency)
-        self.limits_buffer = RingBuffer(row_cnt=2, maxlen=buffer_sample_count)
+        self._limits_buffer = RingBuffer(row_cnt=2, maxlen=buffer_sample_count)
 
     def _update(self):
         sources = self.input_node.output
@@ -101,16 +101,16 @@ class ThreeDeeBrain(OutputNode):
             sources = np.abs(sources)
         self._update_colormap_limits(sources)
         normalized_sources = self._normalize_sources(last_sample(sources))
-        self.brain_painter.draw(normalized_sources)
+        self._brain_painter.draw(normalized_sources)
 
     def _update_colormap_limits(self, sources):
-        self.limits_buffer.extend(np.array([
+        self._limits_buffer.extend(np.array([
             make_time_dimension_second(np.min(sources, axis=CHANNEL_AXIS)),
             make_time_dimension_second(np.max(sources, axis=CHANNEL_AXIS)),
         ]))
 
         if self.limits_mode == self.LIMITS_MODES.GLOBAL:
-            mins, maxs = self.limits_buffer.data
+            mins, maxs = self._limits_buffer.data
             self.colormap_limits.lower = np.percentile(mins, q = 5)
             self.colormap_limits.upper = np.percentile(maxs, q = 95)
         elif self.limits_mode == self.LIMITS_MODES.LOCAL:
@@ -127,8 +127,8 @@ class ThreeDeeBrain(OutputNode):
 
     @property
     def widget(self):
-        if self.brain_painter.widget is not None:
-            return self.brain_painter.widget
+        if self._brain_painter.widget is not None:
+            return self._brain_painter.widget
         else:
             raise AttributeError('{} does not have widget yet. Probably has not been initialized')
 
