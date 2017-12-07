@@ -32,7 +32,7 @@ class ProcessorNodeControls(MyGroupParameter):
     def _add_disable_parameter(self):
         disabled_value = False  # TODO: change once disabling is implemented
         disabled = parameterTypes.SimpleParameter(type='bool', name=self.DISABLED_NAME, value=disabled_value,
-                                                  readonly=True)
+                                                  readonly=False)
         disabled.sigValueChanged.connect(self._on_disabled_changed)
         self.disabled = self.addChild(disabled)
 
@@ -66,15 +66,25 @@ class LinearFilterControls(ProcessorNodeControls):
 
     def _on_lower_cutoff_changed(self, param, value):
         # Update the node
-        self._processor_node.lower_cutoff = value  # TODO: implement on the filter side
+        if value == 0.0:
+            self._processor_node.lower_cutoff = None
+        else:
+            self._processor_node.lower_cutoff = value  # TODO: implement on the filter side
         # Update the upper cutoff so that it is not lower that the lower one
-        self.upper_cutoff.setLimits((value, 100))
+        if self.upper_cutoff.value() != 0.0:
+            self.upper_cutoff.setLimits((value, 100))
 
     def _on_upper_cutoff_changed(self, param, value):
         # Update the node
-        self._processor_node.upper_cutoff = value  # TODO: implement on the filter side
-        # Update the lower cutoff so that it is not higher that the upper one
-        self.lower_cutoff.setLimits((0, value))
+        if value == 0.0:
+            self._processor_node.upper_cutoff = None
+            value = 100
+        else:
+            self._processor_node.upper_cutoff = value  # TODO: implement on the filter side
+
+        if self.lower_cutoff.value() != 0:
+            # Update the lower cutoff so that it is not higher that the upper one
+            self.lower_cutoff.setLimits((0, value))
 
 
 class InverseModelControls(ProcessorNodeControls):

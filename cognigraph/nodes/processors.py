@@ -74,20 +74,24 @@ class LinearFilter(ProcessorNode):
     CHANGES_IN_THESE_REQUIRE_RESET = ('lower_cutoff', 'upper_cutoff')
 
     def _check_value(self, key, value):
-        if key == 'lower_cutoff':
+        if value is None:
+            pass
+
+        elif key == 'lower_cutoff':
             if hasattr(self, 'upper_cutoff') and self.upper_cutoff is not None and value > self.upper_cutoff:
                 raise ValueError('Lower cutoff cannot be set higher that the upper cutoff')
             if value < 0:
                 raise ValueError('Lower cutoff must be a positive number')
 
-        if key == 'upper_cutoff':
+        elif key == 'upper_cutoff':
             if hasattr(self, 'upper_cutoff') and self.lower_cutoff is not None and value < self.lower_cutoff:
                 raise ValueError('Upper cutoff cannot be set lower that the lower cutoff')
             if value < 0:
                 raise ValueError('Upper cutoff must be a positive number')
 
     def _reset(self):
-        self._linear_filter.reset()
+        if self._linear_filter is not None:
+            self._linear_filter.reset()
 
     def __init__(self, lower_cutoff, upper_cutoff):
         super().__init__()
