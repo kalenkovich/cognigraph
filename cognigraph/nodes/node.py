@@ -1,8 +1,17 @@
-import time
+from typing import Tuple, Dict
+
 import numpy as np
-from typing import Tuple
 
 from ..helpers.misc import class_name_of
+
+
+class Message(object):
+    """Class to hold messages that need to be delivered to the descendant nodes before they update"""
+    def __init__(self, there_has_been_a_change=False, output_history_is_no_longer_valid=False):
+        self.there_has_been_a_change = there_has_been_a_change  # This is used as a message to the next node telling it
+        # that either this or one of the nodes before it had a change
+        self.output_history_is_no_longer_valid = there_has_been_a_change  # The change was such that new outputs cannot
+        # be considered as continuation of the previous ones
 
 
 class Node(object):
@@ -23,15 +32,42 @@ class Node(object):
         raise NotImplementedError(msg)
 
     def __init__(self):
-        self.input_node = None  # type: Node
+        self._input_node = None  # type: Node
         self.output = None  # type: np.ndarray
-        
-        self.there_has_been_a_change = False  # This is used as a message to the next node telling it that either this 
-        # or one of the node before had a significant change
+
+        self._receivers = {}  # type: Dict[Message]
+
         self._should_initialize = True
         self._should_reset = False
         self._saved_from_upstream = None  # type: dict  # Used to determine whether upstream changes warrant
         # reinitialization
+
+    @property
+    def input_node(self):
+        return self._input_node
+
+    @input_node.setter
+    def input_node(self, value):
+        if self._input_node is value:  # Also covers the case when both are None
+            return
+
+        # Tell the previous input node about disconnection
+        if self._input_node is not None:
+            self._input_node.deregister_a_receiver(self)
+
+        self._input_node = value
+
+        # Tell the new input node about the connection
+        if value is not None:
+            value.register_a_receiver(self)
+
+    def register_a_receiver(self, receiver_node):
+        # New input node mean everything has changed
+        self._receivers[receiver_node] = Message(there_has_been_a_change=True,
+                                                 output_history_is_no_longer_valid=True)
+
+    def deregister_a_receiver(self, receiver_node):
+        self._receivers.pop(receiver_node, None)
 
     def initialize(self):
         self._saved_from_upstream = {item: self.traverse_back_and_find(item) for item
