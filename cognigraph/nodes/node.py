@@ -162,6 +162,7 @@ class Node(object):
             # Tell the receivers about what has happened
             message = Message(there_has_been_a_change=True,
                               output_history_is_no_longer_valid=output_history_is_no_longer_valid)
+            self._deliver_a_message_to_receivers(message)
 
     def _reset(self) -> bool:
         """Does what needs to be done when one of the self.CHANGES_IN_THESE_REQUIRE_RESET has been changed

@@ -20,6 +20,9 @@ from ..helpers.ring_buffer import RingBuffer
 
 class LSLStreamOutput(OutputNode):
 
+    def _on_input_history_invalidation(self):
+        pass
+
     def _check_value(self, key, value):
         pass  # TODO: check that value as a string usable as a stream name
 
@@ -61,6 +64,9 @@ class LSLStreamOutput(OutputNode):
 
 
 class ThreeDeeBrain(OutputNode):
+    def _on_input_history_invalidation(self):
+        self.reset()
+
     def _check_value(self, key, value):
         pass
 

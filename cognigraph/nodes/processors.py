@@ -10,6 +10,10 @@ from vendor.nfb.pynfb.signal_processing import filters
 
 
 class InverseModel(ProcessorNode):
+    def _on_input_history_invalidation(self):
+        # The methods implemented in this node do not rely on past inputs
+        pass
+
     UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = ('channel_labels', )
     CHANGES_IN_THESE_REQUIRE_RESET = ('mne_inverse_model_file_path', 'snr', 'method')
 
@@ -25,6 +29,8 @@ class InverseModel(ProcessorNode):
     def _reset(self):
         self.mne_inverse_model_file_path = self._user_provided_inverse_model_file_path
         self.initialize()
+        output_history_is_no_longer_valid = True
+        return output_history_is_no_longer_valid
 
     SUPPORTED_METHODS = ['MNE', 'dSPM', 'sLORETA']
 
@@ -70,6 +76,10 @@ class InverseModel(ProcessorNode):
 
 
 class LinearFilter(ProcessorNode):
+
+    def _on_input_history_invalidation(self):
+        pass
+
     UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = ('channel_count',)
     CHANGES_IN_THESE_REQUIRE_RESET = ('lower_cutoff', 'upper_cutoff')
 
@@ -92,6 +102,8 @@ class LinearFilter(ProcessorNode):
     def _reset(self):
         if self._linear_filter is not None:
             self._linear_filter.reset()
+        output_history_is_no_longer_valid = True
+        return output_history_is_no_longer_valid
 
     def __init__(self, lower_cutoff, upper_cutoff):
         super().__init__()
@@ -118,6 +130,9 @@ class LinearFilter(ProcessorNode):
 
 
 class EnvelopeExtractor(ProcessorNode):
+    def _on_input_history_invalidation(self):
+        pass
+
     def _check_value(self, key, value):
         if key == 'factor':
             if value <= 0 or value >= 1:
@@ -129,6 +144,8 @@ class EnvelopeExtractor(ProcessorNode):
 
     def _reset(self):
         self._envelope_extractor.reset()
+        output_history_is_no_longer_valid = True
+        return output_history_is_no_longer_valid
 
     UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = ('channel_count',)
     CHANGES_IN_THESE_REQUIRE_RESET = ('method', 'factor')
@@ -169,6 +186,9 @@ def pynfb_filter_based_processor_class(pynfb_filter_class):
     In this case LinearFilter should provide fs and n_channels parameters to filters.ButterFilter automatically
     """
     class PynfbFilterBasedProcessorClass(ProcessorNode):
+        def _on_input_history_invalidation(self):
+            pass
+
         def _check_value(self, key, value):
             pass
 
