@@ -95,6 +95,7 @@ class Node(object):
                                      in self.UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION}
 
         with self.not_triggering_reset():
+            print('Initializing the {} node'.format(class_name_of(self)))
             self._initialize()
             self._initialized = True
 
@@ -160,6 +161,7 @@ class Node(object):
             raise ValueError('Trying to reset even though there is no indication for it.')
 
         with self.not_triggering_reset():
+            print('Resetting the {} node because of attribute changes'.format(class_name_of(self)))
             output_history_is_no_longer_valid = self._reset()
             self._should_reset = False
 
@@ -179,6 +181,7 @@ class Node(object):
             raise ValueError('Trying to flush history even though there is no indication for it.')
 
         with self.not_triggering_reset():
+            print('Resetting the {} node because history is no longer valid'.format(class_name_of(self)))
             self._on_input_history_invalidation()
             self._input_history_is_no_longer_valid = False
 
