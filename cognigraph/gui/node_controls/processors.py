@@ -102,8 +102,8 @@ class InverseModelControls(ProcessorNodeControls):
         methods_combo.sigValueChanged.connect(self._on_method_changed)
         self.methods_combo = self.addChild(methods_combo)
 
-    def _on_method_changed(self):
-        pass  # TODO: implement
+    def _on_method_changed(self, param, value):
+        self._processor_node.method = value
 
 
 class EnvelopeExtractorControls(ProcessorNodeControls):
