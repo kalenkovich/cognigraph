@@ -284,7 +284,7 @@ class BrainPainter(object):
     @staticmethod
     def _guess_surfaces_dir_based_on(mne_inverse_model_file_path):
         # If tha inverse model that was used is from the mne's sample dataset, then we can use curvatures from there
-        path_to_sample = os.path.realpath(sample.data_path())
+        path_to_sample = os.path.realpath(sample.data_path(verbose='ERROR'))
         if os.path.realpath(mne_inverse_model_file_path).startswith(path_to_sample):
             return os.path.join(path_to_sample, "subjects", "sample", "surf")
 
