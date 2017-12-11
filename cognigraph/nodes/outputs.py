@@ -34,6 +34,7 @@ class LSLStreamOutput(OutputNode):
 
     def _reset(self):
         # It is impossible to change then name of an already started stream so we have to initialize again
+        self._should_reinitialize = True
         self.initialize()
 
     def __init__(self, stream_name=None):
@@ -65,6 +66,7 @@ class LSLStreamOutput(OutputNode):
 
 class ThreeDeeBrain(OutputNode):
     def _on_input_history_invalidation(self):
+        self._should_reset = True
         self.reset()
 
     def _check_value(self, key, value):
@@ -81,7 +83,8 @@ class ThreeDeeBrain(OutputNode):
 
     LIMITS_MODES = SimpleNamespace(GLOBAL='Global', LOCAL='Local', MANUAL='Manual')
 
-    def __init__(self, take_abs=True, limits_mode=LIMITS_MODES.LOCAL, buffer_length=1, **brain_painter_kwargs):
+    def __init__(self, take_abs=True, limits_mode=LIMITS_MODES.LOCAL, buffer_length=1, threshold_pct=50,
+                 **brain_painter_kwargs):
         super().__init__()
 
         self.limits_mode = limits_mode
@@ -89,9 +92,19 @@ class ThreeDeeBrain(OutputNode):
         self.buffer_length = buffer_length
         self.take_abs = take_abs
         self.colormap_limits = SimpleNamespace(lower=None, upper=None)
+        self._threshold_pct = threshold_pct
 
         self._limits_buffer = None  # type: RingBuffer
-        self._brain_painter = BrainPainter(mne_inverse_model_file_path=None, **brain_painter_kwargs)
+        self._brain_painter = BrainPainter(threshold_pct=threshold_pct, **brain_painter_kwargs)
+
+    @property
+    def threshold_pct(self):
+        return self._threshold_pct
+
+    @threshold_pct.setter
+    def threshold_pct(self, value):
+        self._threshold_pct = value
+        self._brain_painter.threshold_pct = value
 
     def _initialize(self):
         mne_inverse_model_file_path = self.traverse_back_and_find('mne_inverse_model_file_path')
@@ -129,7 +142,10 @@ class ThreeDeeBrain(OutputNode):
     def _normalize_sources(self, last_sources):
         minimum = self.colormap_limits.lower
         maximum = self.colormap_limits.upper
-        return (last_sources - minimum) / (maximum - minimum)
+        if minimum == maximum:
+            return last_sources * 0
+        else:
+            return (last_sources - minimum) / (maximum - minimum)
 
     @property
     def widget(self):
@@ -140,10 +156,10 @@ class ThreeDeeBrain(OutputNode):
 
 
 class BrainPainter(object):
-    def __init__(self, mne_inverse_model_file_path, threshold_pct=50,
+    def __init__(self, threshold_pct=50,
                  brain_colormap: matplotlib_Colormap = cm.Greys,
                  data_colormap: matplotlib_Colormap = cm.Reds,
-                 show_curvature=True, surfaces_dir=None, buffer_length=1):
+                 show_curvature=True, surfaces_dir=None):
         """
         This is the last step. Object of this class draws whatever data are given to it on the cortex mesh. No changes,
         except for thresholding, are made.

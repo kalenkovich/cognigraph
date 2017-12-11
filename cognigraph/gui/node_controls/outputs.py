@@ -75,7 +75,7 @@ class ThreeDeeBrainControls(OutputNodeControls):
         self.lower_limit_spinbox = self.addChild(lower_limit_spinbox)  # type: parameterTypes.SimpleParameter
         self.upper_limit_spinbox = self.addChild(upper_limit_spinbox)  # type: parameterTypes.SimpleParameter
 
-        threshold_value = self._output_node.brain_painter.threshold_pct
+        threshold_value = self._output_node.threshold_pct
         threshold_slider = SliderParameter(name=self.THRESHOLD_SLIDER_NAME, limits=(0, 99), value=threshold_value,
                                            prec=0, suffix='%')
         threshold_slider.sigValueChanged.connect(self._on_threshold_changed)
@@ -144,7 +144,7 @@ class ThreeDeeBrainControls(OutputNodeControls):
         pass
 
         # Changes to the node
-        self._output_node.brain_painter.threshold_pct = value
+        self._output_node.threshold_pct = value
 
 
 class LSLStreamOutputControls(OutputNodeControls):

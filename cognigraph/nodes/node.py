@@ -94,14 +94,18 @@ class Node(object):
         self._saved_from_upstream = {item: self.traverse_back_and_find(item) for item
                                      in self.UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION}
 
-        with self.not_triggering_reset:
+        with self.not_triggering_reset():
             self._initialize()
+            self._initialized = True
+
             self._no_pending_changes = True  # Set all the resetting flags to false
+            self._there_has_been_an_upstream_change = False
 
             # Tell the receivers about what has happened
             message = Message(there_has_been_a_change=True,
                               output_history_is_no_longer_valid=True)
             self._deliver_a_message_to_receivers(message)
+
 
     def _initialize(self):
         """Prepares everything for the first update. If called again, should remove all the traces from the past"""
@@ -152,10 +156,10 @@ class Node(object):
         raise NotImplementedError
 
     def reset(self):
-        if self._should_reinitialize is False:
+        if self._should_reset is False:
             raise ValueError('Trying to reset even though there is no indication for it.')
 
-        with self.not_triggering_reset:
+        with self.not_triggering_reset():
             output_history_is_no_longer_valid = self._reset()
             self._should_reset = False
 
@@ -174,7 +178,7 @@ class Node(object):
         if self._input_history_is_no_longer_valid is False:
             raise ValueError('Trying to flush history even though there is no indication for it.')
 
-        with self.not_triggering_reset:
+        with self.not_triggering_reset():
             self._on_input_history_invalidation()
             self._input_history_is_no_longer_valid = False
 
@@ -212,8 +216,10 @@ class Node(object):
         """Change of attributes CHANGES_IN_THESE_REQUIRE_RESET should trigger reset() but not from within the class.
         Use this context manager to suspend reset() triggering."""
         backup, self.CHANGES_IN_THESE_REQUIRE_RESET = self.CHANGES_IN_THESE_REQUIRE_RESET, ()
-        yield
-        self.CHANGES_IN_THESE_REQUIRE_RESET = backup
+        try:
+            yield
+        finally:
+            self.CHANGES_IN_THESE_REQUIRE_RESET = backup
 
     def _check_value(self, key, value):
         raise NotImplementedError
@@ -234,6 +240,7 @@ class SourceNode(Node):
 
     def _reset(self):
         # There is nothing to reset really. So we wil just go ahead and initialize
+        self._should_reinitialize = True
         self.initialize()
         output_history_is_no_longer_valid = True
         return output_history_is_no_longer_valid

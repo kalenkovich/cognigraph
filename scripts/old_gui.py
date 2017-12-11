@@ -42,7 +42,6 @@ source_controls.source_type_combo.setValue(source_controls.SOURCE_TYPE_PLACEHOLD
 
 
 linear_filter_controls = processors_controls.children()[0]
-linear_filter_controls.disabled.setValue(True)
 
 envelope_controls = processors_controls.children()[2]
 envelope_controls.disabled.setValue(True)
@@ -51,7 +50,6 @@ envelope_controls.disabled.setValue(True)
 three_dee_brain_controls = outputs_controls.children()[0]
 three_dee_brain_controls.limits_mode_combo.setValue('Global')
 three_dee_brain_controls.limits_mode_combo.setValue('Local')
-
 
 
 window.initialize()
@@ -72,10 +70,11 @@ source.MAX_SAMPLES_IN_CHUNK = 30
 envelope.disabled = True
 
 
+
 if __name__ == '__main__':
     import sys
 
-    timer.start(1000. / frequency * 10)
+    timer.start()
 
     # TODO: this runs when in iPython. It should not.
     # Start Qt event loop unless running in interactive mode or using pyside.

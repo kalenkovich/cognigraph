@@ -28,6 +28,7 @@ class InverseModel(ProcessorNode):
 
     def _reset(self):
         self.mne_inverse_model_file_path = self._user_provided_inverse_model_file_path
+        self._should_reinitialize = True
         self.initialize()
         output_history_is_no_longer_valid = True
         return output_history_is_no_longer_valid
@@ -78,7 +79,8 @@ class InverseModel(ProcessorNode):
 class LinearFilter(ProcessorNode):
 
     def _on_input_history_invalidation(self):
-        pass
+        if self._linear_filter is not None:
+            self._linear_filter.reset()
 
     UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = ('channel_count',)
     CHANGES_IN_THESE_REQUIRE_RESET = ('lower_cutoff', 'upper_cutoff')
@@ -100,8 +102,8 @@ class LinearFilter(ProcessorNode):
                 raise ValueError('Upper cutoff must be a positive number')
 
     def _reset(self):
-        if self._linear_filter is not None:
-            self._linear_filter.reset()
+        self._should_reinitialize = True
+        self.initialize()
         output_history_is_no_longer_valid = True
         return output_history_is_no_longer_valid
 
