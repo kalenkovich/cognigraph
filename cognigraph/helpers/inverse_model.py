@@ -22,7 +22,7 @@ def _fake_standard_1005_info(channel_labels):
 
 def _make_standard_1005_inverse_operator(channel_labels):
 
-    forward = mne.read_forward_solution(standard_1005_forward_file_path)
+    forward = mne.read_forward_solution(standard_1005_forward_file_path, verbose='ERROR')
     fake_info = _fake_standard_1005_info(channel_labels)
     G = forward['sol']['data']
     q = np.trace(G.dot(G.T)) / G.shape[0]
@@ -32,7 +32,7 @@ def _make_standard_1005_inverse_operator(channel_labels):
                          projs=fake_info['projs'],
                          nfree=1)
 
-    return mne.minimum_norm.make_inverse_operator(fake_info, forward, cov)
+    return mne.minimum_norm.make_inverse_operator(fake_info, forward, cov, verbose='ERROR')
 
 
 def get_inverse_model_matrix_from_labels(channel_labels, snr, method):
@@ -85,7 +85,8 @@ def _matrix_from_inverse_operator(inverse_operator, snr, method) -> np.ndarray:
 
     # Applying inverse modelling to an identity matrix gives us the forward model matrix
     lambda2 = 1.0 / snr ** 2
-    stc = mne.minimum_norm.apply_inverse_raw(dummy_raw, inverse_operator, lambda2, method, pick_ori='normal')
+    stc = mne.minimum_norm.apply_inverse_raw(dummy_raw, inverse_operator, lambda2, method, pick_ori='normal',
+                                             verbose='ERROR')
 
     return stc.data
 
