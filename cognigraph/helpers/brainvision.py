@@ -28,6 +28,5 @@ brainvision._check_mrk_version = _check_mrk_version
 def read_brain_vision_data(vhdr_file_path, time_axis):
     raw = mne.io.read_raw_brainvision(vhdr_fname=vhdr_file_path, verbose='ERROR')
     data = raw.get_data()
-    frequency = raw.info['sfreq']
-    channel_labels = raw.info['ch_names']
-    return data, frequency, channel_labels
+    mne_info = raw.info.copy()
+    return data, mne_info

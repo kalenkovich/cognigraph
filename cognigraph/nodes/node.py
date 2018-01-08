@@ -250,7 +250,10 @@ class SourceNode(Node):
     def initialize(self):
         self.mne_info = None
         super().initialize()
-        self._check_mne_info()
+        try:
+            self._check_mne_info()
+        except:
+            self._initialized = False
 
     def _check_mne_info(self):
         class_name = class_name_of(self)

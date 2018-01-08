@@ -3,6 +3,7 @@ import time
 
 import pylsl as lsl
 import numpy as np
+import mne
 
 from .. import TIME_AXIS
 from .node import SourceNode
@@ -45,10 +46,10 @@ class LSLStreamSource(SourceNode):
             info = stream_infos[0]
             self._inlet = lsl.StreamInlet(info)
             self._inlet.open_stream()
-            self.frequency = info.nominal_srate()
+            frequency = info.nominal_srate()
             self.dtype = convert_lsl_format_to_numpy(self._inlet.channel_format)
-            self.channel_count = self._inlet.channel_count
-            self.channel_labels = self._read_channel_labels_from_info(self._inlet.info())
+            channel_labels = self._read_channel_labels_from_info(self._inlet.info())
+            self.mne_info = mne.create_info(channel_labels, frequency)
 
     @staticmethod
     def _read_channel_labels_from_info(info: lsl.StreamInfo):
@@ -81,7 +82,6 @@ class BrainvisionSource(SourceNode):
         self._file_path = None
         self.file_path = file_path  # This will also populate self.source_name
         self.data = None  # type: np.ndarray
-        self.frequency = None
         self.loop_the_file = False
         self.is_alive = True
 
@@ -114,10 +114,9 @@ class BrainvisionSource(SourceNode):
 
         if self.file_path is not None:
             vhdr_file_path = os.path.splitext(self.file_path)[0] + '.vhdr'
-            self.data, self.frequency, self.channel_labels = \
+            self.data, self.mne_info = \
                 read_brain_vision_data(vhdr_file_path=vhdr_file_path, time_axis=TIME_AXIS)
             self.dtype = self.data.dtype
-            self.channel_count = len(self.channel_labels)
 
     def _update(self):
         if self.data is None:
@@ -129,7 +128,8 @@ class BrainvisionSource(SourceNode):
 
             seconds_since_last_update = current_time - self._time_of_the_last_update
             self._time_of_the_last_update = current_time
-            max_samples_in_chunk = np.int64(seconds_since_last_update * self.frequency)  # Actual number can be lower if
+            frequency = self.mne_info['sfreq']
+            max_samples_in_chunk = np.int64(seconds_since_last_update * frequency)  # Actual number can be lower if
             # we are at the end of file and not looping
             max_samples_in_chunk = min(max_samples_in_chunk, self.MAX_SAMPLES_IN_CHUNK)  # can't process fast enough
             indices = self._samples_already_read + np.arange(max_samples_in_chunk)
