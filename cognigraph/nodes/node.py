@@ -2,6 +2,8 @@ from typing import Tuple, Dict
 from contextlib import contextmanager
 
 import numpy as np
+import mne
+from mne.io.pick import channel_type
 
 from ..helpers.misc import class_name_of
 
@@ -240,6 +242,41 @@ class SourceNode(Node):
 
     # There is no 'upstream' for the sources
     UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = ()
+
+    def __init__(self):
+        super().__init__()
+        self.mne_info = None  # type: mne.Info
+
+    def initialize(self):
+        self.mne_info = None
+        super().initialize()
+        try:
+            self._check_mne_info()
+        except:
+            self._initialized = False
+
+    def _check_mne_info(self):
+        class_name = class_name_of(self)
+        error_hint = ' Check the initialize() method'
+
+        if self.mne_info is None:
+            raise ValueError('{} node has empty mne_info attribute.'.format(class_name) + error_hint)
+
+        channel_count = len(self.mne_info['chs'])
+        if len(self.mne_info['chs']) == 0:
+            raise ValueError('{} node has 0 channels in its mne_info attribute.' + error_hint)
+
+        channel_types = {channel_type(self.mne_info, i) for i in np.arange(channel_count)}
+        required_channel_types = {'grad', 'mag', 'eeg'}
+        if len(channel_types.intersection(required_channel_types)) == 0:
+            raise ValueError('{}')
+
+        try:
+            self.mne_info._check_consistency()
+        except RuntimeError as e:
+            exception_message = 'The mne_info attribute of {} node is not self-consistent'.format(class_name_of(self))
+            raise Exception(exception_message) from e
+
 
     def _reset(self):
         # There is nothing to reset really. So we wil just go ahead and initialize

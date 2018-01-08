@@ -1,6 +1,7 @@
 from typing import Tuple
 
 import numpy as np
+import mne
 
 from .node import ProcessorNode
 from ..helpers.matrix_functions import make_time_dimension_second, put_time_dimension_back_from_second
@@ -14,7 +15,7 @@ class InverseModel(ProcessorNode):
         # The methods implemented in this node do not rely on past inputs
         pass
 
-    UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = ('channel_labels', )
+    UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = ('mne_info', )
     CHANGES_IN_THESE_REQUIRE_RESET = ('mne_inverse_model_file_path', 'snr', 'method')
 
     def _check_value(self, key, value):
@@ -43,8 +44,7 @@ class InverseModel(ProcessorNode):
         self.snr = snr
         self.method = method
 
-        self.channel_labels = None
-        self.channel_count = None
+        self.mne_info = None
 
     @property
     def mne_inverse_model_file_path(self):
@@ -64,7 +64,8 @@ class InverseModel(ProcessorNode):
         return put_time_dimension_back_from_second(output_array)
 
     def _initialize(self):
-        channel_labels = self.traverse_back_and_find('channel_labels')
+        mne_info = self.traverse_back_and_find('mne_info')
+        channel_labels = mne_info['ch_names']
         if self._user_provided_inverse_model_file_path is None:
             self._inverse_model_matrix, self._mne_inverse_model_file_path = \
                 get_inverse_model_matrix_from_labels(channel_labels, snr=self.snr, method=self.method)
@@ -72,9 +73,10 @@ class InverseModel(ProcessorNode):
             self._inverse_model_matrix = get_inverse_model_matrix(self._user_provided_inverse_model_file_path,
                                                                   channel_labels, snr=self.snr, method=self.method)
 
-        self.channel_count = self._inverse_model_matrix.shape[0]
-        self.channel_labels = ['vertex #{}'.format(i + 1) for i in range(self.channel_count)]
-
+        frequency = mne_info['sfreq']
+        channel_count = self._inverse_model_matrix.shape[0]
+        channel_labels = ['vertex #{}'.format(i + 1) for i in range(channel_count)]
+        self.mne_info = mne.create_info(channel_labels, frequency)
 
 class LinearFilter(ProcessorNode):
 
@@ -82,7 +84,7 @@ class LinearFilter(ProcessorNode):
         if self._linear_filter is not None:
             self._linear_filter.reset()
 
-    UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = ('channel_count',)
+    UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = ('mne_info', )
     CHANGES_IN_THESE_REQUIRE_RESET = ('lower_cutoff', 'upper_cutoff')
 
     def _check_value(self, key, value):
@@ -114,8 +116,9 @@ class LinearFilter(ProcessorNode):
         self._linear_filter = None  # type: filters.ButterFilter
 
     def _initialize(self):
-        frequency = self.traverse_back_and_find('frequency')
-        channel_count = self.traverse_back_and_find('channel_count')
+        mne_info = self.traverse_back_and_find('mne_info')
+        frequency = mne_info['sfreq']
+        channel_count = mne_info['nchan']
         if not (self.lower_cutoff is None and self.upper_cutoff is None):
             band = (self.lower_cutoff, self.upper_cutoff)
             self._linear_filter = filters.ButterFilter(band, fs=frequency, n_channels=channel_count)
@@ -149,7 +152,7 @@ class EnvelopeExtractor(ProcessorNode):
         output_history_is_no_longer_valid = True
         return output_history_is_no_longer_valid
 
-    UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = ('channel_count',)
+    UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = ('mne_info', )
     CHANGES_IN_THESE_REQUIRE_RESET = ('method', 'factor')
     SUPPORTED_METHODS = ('Exponential smoothing', )
 
@@ -160,7 +163,7 @@ class EnvelopeExtractor(ProcessorNode):
         self._envelope_extractor = None  # type: ExponentialMatrixSmoother
 
     def _initialize(self):
-        channel_count = self.traverse_back_and_find('channel_count')
+        channel_count = self.traverse_back_and_find('mne_info')['nchan']
         self._envelope_extractor = ExponentialMatrixSmoother(factor=self.factor, column_count=channel_count)
         self._envelope_extractor.apply = pynfb_ndarray_function_wrapper(self._envelope_extractor.apply)
 

@@ -49,7 +49,7 @@ class Pipeline(object):
     @property
     def frequency(self) -> (int, float):
         try:
-            return self.source.frequency
+            return self.source.mne_info['sfreq']
         except AttributeError:
             raise ValueError("No source has been set in the pipeline")
 

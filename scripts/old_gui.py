@@ -12,7 +12,7 @@ app = QtGui.QApplication(sys.argv)
 pipeline = Pipeline()
 
 # pipeline.source = sources.LSLStreamSource(stream_name='cognigraph-mock-stream')
-file_path = r"D:\Downloads\brainvision\Bulavenkova_A_2017-10-24_15-33-18_Rest.vhdr"
+file_path = r"D:\Cognigraph\eyes\Koleno.eeg"
 source = sources.BrainvisionSource(file_path=file_path)
 pipeline.source = source
 

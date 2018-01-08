@@ -29,7 +29,7 @@ class LSLStreamOutput(OutputNode):
     CHANGES_IN_THESE_REQUIRE_RESET = ('stream_name', )
 
     UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = (
-        'source_name', 'frequency', 'dtype', 'channel_labels'
+        'source_name', 'mne_info', 'dtype',
     )
 
     def _reset(self):
@@ -50,10 +50,11 @@ class LSLStreamOutput(OutputNode):
         self.stream_name = self._provided_stream_name or (source_name + '_output')
 
         # Get other info from somewhere down the predecessor chain
-        frequency = self.traverse_back_and_find('frequency')
         dtype = self.traverse_back_and_find('dtype')
         channel_format = convert_numpy_format_to_lsl(dtype)
-        channel_labels = self.traverse_back_and_find('channel_labels')
+        mne_info = self.traverse_back_and_find('mne_info')
+        frequency = mne_info['sfreq']
+        channel_labels = mne_info['ch_names']
 
         self._outlet = create_lsl_outlet(name=self.stream_name, frequency=frequency, channel_format=channel_format,
                                          channel_labels=channel_labels)
@@ -78,7 +79,7 @@ class ThreeDeeBrain(OutputNode):
         self._limits_buffer.clear()
 
     UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = (
-        'mne_inverse_model_file_path', 'channel_labels'
+        'mne_inverse_model_file_path', 'mne_info'
     )
 
     LIMITS_MODES = SimpleNamespace(GLOBAL='Global', LOCAL='Local', MANUAL='Manual')
@@ -110,7 +111,7 @@ class ThreeDeeBrain(OutputNode):
         mne_inverse_model_file_path = self.traverse_back_and_find('mne_inverse_model_file_path')
         self._brain_painter.initialize(mne_inverse_model_file_path)
 
-        frequency = self.traverse_back_and_find('frequency')
+        frequency = self.traverse_back_and_find('mne_info')['sfreq']
         buffer_sample_count = np.int(self.buffer_length * frequency)
         self._limits_buffer = RingBuffer(row_cnt=2, maxlen=buffer_sample_count)
 
