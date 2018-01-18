@@ -10,6 +10,33 @@ from ..helpers.pynfb import pynfb_ndarray_function_wrapper, ExponentialMatrixSmo
 from vendor.nfb.pynfb.signal_processing import filters
 
 
+class Preprocessing(ProcessorNode):
+
+    def __init__(self, duration):
+
+
+    def _on_input_history_invalidation(self):
+        self._reset_statistics()
+
+    def _check_value(self, key, value):
+        pass
+
+    CHANGES_IN_THESE_REQUIRE_RESET = ('mne_info', )
+
+    def _initialize(self):
+        pass
+
+    def _reset(self) -> bool:
+        pass
+
+    def _update(self):
+        pass
+
+    @property
+    def UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION(self) -> Tuple[str]:
+        pass
+
+
 class InverseModel(ProcessorNode):
     def _on_input_history_invalidation(self):
         # The methods implemented in this node do not rely on past inputs
