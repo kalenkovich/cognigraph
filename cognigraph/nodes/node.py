@@ -292,7 +292,8 @@ class SourceNode(Node):
 class ProcessorNode(Node):
     """Still an abstract class. Initially existed for clarity of inheritance only. Now handles empty inputs."""
     def __init__(self):
-        self.disabled = False
+        with self.not_triggering_reset():
+            self.disabled = False
         super().__init__()
 
     def update(self):
