@@ -5,6 +5,8 @@ import mne
 from mne.datasets import sample
 from mne.minimum_norm import read_inverse_operator
 
+from .. import MISC_CHANNEL_TYPE
+
 data_path = sample.data_path(verbose='ERROR')
 neuromag_inverse_file_path = os.path.join(data_path, 'MEG', 'sample', 'sample_audvis-meg-oct-6-meg-inv.fif')
 standard_1005_forward_file_path = os.path.join(data_path, 'MEG', 'sample', 'sample_1005-eeg-oct-6-fwd.fif')
@@ -14,7 +16,7 @@ standard_1005_inverse_file_path = os.path.join(data_path, 'MEG', 'sample', 'samp
 def _fake_standard_1005_info(channel_labels):
     montage_1005 = mne.channels.read_montage(kind='standard_1005')
     montage_labels_upper = [label.upper() for label in montage_1005.ch_names]
-    ch_types = ['eeg' if label.upper() in montage_labels_upper else 'misc'
+    ch_types = ['eeg' if label.upper() in montage_labels_upper else MISC_CHANNEL_TYPE
                 for label in channel_labels]
     fake_info = mne.create_info(ch_names=channel_labels, sfreq=1000, ch_types=ch_types,)
     return fake_info
