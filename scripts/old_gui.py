@@ -16,10 +16,17 @@ file_path = r"D:\Cognigraph\eyes\Koleno.eeg"
 source = sources.BrainvisionSource(file_path=file_path)
 pipeline.source = source
 
+# Processors
+preprocessing = processors.Preprocessing()
+pipeline.add_processor(preprocessing)
+
 linear_filter = processors.LinearFilter(lower_cutoff=None, upper_cutoff=None)
 pipeline.add_processor(linear_filter)
+
 pipeline.add_processor(processors.InverseModel(method='MNE'))
 pipeline.add_processor(processors.EnvelopeExtractor())
+
+# Outputs
 pipeline.add_output(outputs.ThreeDeeBrain())
 pipeline.add_output(outputs.LSLStreamOutput())
 # pipeline.initialize_all_nodes()
@@ -40,7 +47,7 @@ source_controls.source_type_combo.setValue(source_controls.SOURCE_TYPE_PLACEHOLD
 linear_filter_controls = processors_controls.children()[0]
 
 envelope_controls = processors_controls.children()[2]
-envelope_controls.disabled.setValue(True)
+# envelope_controls.disabled.setValue(True)
 
 
 three_dee_brain_controls = outputs_controls.children()[0]
@@ -53,7 +60,6 @@ window.initialize()
 
 def run():
     pipeline.update_all_nodes()
-    print(pipeline.source.output.shape[TIME_AXIS])
 
 
 timer = QtCore.QTimer()
@@ -64,7 +70,6 @@ timer.setInterval(1000. / frequency * 10)
 source.loop_the_file = True
 source.MAX_SAMPLES_IN_CHUNK = 30
 envelope.disabled = True
-
 
 
 if __name__ == '__main__':
