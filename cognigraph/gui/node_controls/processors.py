@@ -22,7 +22,7 @@ class ProcessorNodeControls(MyGroupParameter):
         if processor_node is None:
             raise ValueError("Right now we can create controls only for an already existing node")
 
-        self._processor_node = processor_node
+        self._processor_node = processor_node  # type: self.PROCESSOR_CLASS
         self._create_parameters()
         self._add_disable_parameter()
 
@@ -40,8 +40,25 @@ class ProcessorNodeControls(MyGroupParameter):
         self._processor_node.disabled = value
 
 
+class PreprocessingControls(ProcessorNodeControls):
+    PROCESSOR_CLASS = processors.Preprocessing
+    CONTROLS_LABEL = 'Preprocessing'
+
+    DURATION_NAME = 'Baseline duration: '
+
+    def _create_parameters(self):
+
+        duration_value = self._processor_node.collect_for_x_seconds
+        duration = parameterTypes.SimpleParameter(type='int', name=self.DURATION_NAME, suffix='s',
+                                                  limits=(30, 180), value=duration_value)
+        self.duration = self.addChild(duration)
+        self.duration.sigValueChanged.connect(self._on_duration_changed)
+
+    def _on_duration_changed(self, param, value):
+        self._processor_node.collect_for_x_seconds = value
+
 class LinearFilterControls(ProcessorNodeControls):
-    PROCESSOR_CLASS = ProcessorNode
+    PROCESSOR_CLASS = processors.LinearFilter
     CONTROLS_LABEL = 'Linear filter'
 
     LOWER_CUTOFF_NAME = 'Lower cutoff: '
