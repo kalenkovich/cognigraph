@@ -1,19 +1,34 @@
-from typing import Tuple
+from typing import Tuple, List
+import math
 
 import numpy as np
 import mne
+from mne.preprocessing import find_outliers
 
-from .node import ProcessorNode
+from .node import ProcessorNode, Message
 from ..helpers.matrix_functions import make_time_dimension_second, put_time_dimension_back_from_second
 from ..helpers.inverse_model import get_inverse_model_matrix, get_inverse_model_matrix_from_labels
 from ..helpers.pynfb import pynfb_ndarray_function_wrapper, ExponentialMatrixSmoother
+from ..helpers.channels import calculate_interpolation_matrix
+from .. import TIME_AXIS
 from vendor.nfb.pynfb.signal_processing import filters
 
 
 class Preprocessing(ProcessorNode):
 
-    def __init__(self, duration):
+    def __init__(self, collect_for_x_seconds: int =60):
+        super().__init__()
+        self.collect_for_x_seconds = collect_for_x_seconds  # type: int
 
+        self._samples_collected = None  # type: int
+        self._samples_to_be_collected = None  # type: int
+        self._enough_collected = None  # type: bool
+        self._means = None  # type: np.ndarray
+        self._mean_sums_of_squares = None  # type: np.ndarray
+        self._bad_channel_indices = None  # type: List[int]
+        self._interpolation_matrix = None  # type: np.ndarray
+
+        self._reset_statistics()
 
     def _on_input_history_invalidation(self):
         self._reset_statistics()
@@ -21,20 +36,75 @@ class Preprocessing(ProcessorNode):
     def _check_value(self, key, value):
         pass
 
-    CHANGES_IN_THESE_REQUIRE_RESET = ('mne_info', )
+    CHANGES_IN_THESE_REQUIRE_RESET = ('collect_for_x_seconds', )
 
     def _initialize(self):
-        pass
+        frequency = self.traverse_back_and_find('mne_info')['sfreq']
+        self._samples_to_be_collected = int(math.ceil(self.collect_for_x_seconds * frequency))
 
     def _reset(self) -> bool:
-        pass
+        self._reset_statistics()
+        self._input_history_is_no_longer_valid = True
+        return self._input_history_is_no_longer_valid
+
+    def _reset_statistics(self):
+        self._samples_collected = 0
+        self._enough_collected = False
+        self._means = 0
+        self._mean_sums_of_squares = 0
+        self._bad_channel_indices = []
 
     def _update(self):
-        pass
+        # Have we collected enough samples without the new input?
+        enough_collected = self._samples_collected >= self._samples_to_be_collected
+        if not enough_collected:
+            if self.input_node.output is not None and self.input_node.output.shape[TIME_AXIS] > 0:
+                self._update_statistics()
 
-    @property
-    def UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION(self) -> Tuple[str]:
-        pass
+        elif not self._enough_collected:  # We just got enough samples
+            self._enough_collected = True
+            standard_deviations = self._calculate_standard_deviations()
+            self._bad_channel_indices = find_outliers(standard_deviations)
+            if any(self._bad_channel_indices):
+                self._interpolation_matrix = self._calculate_interpolation_matrix()
+                message = Message(there_has_been_a_change=True,
+                                  output_history_is_no_longer_valid=True)
+                self._deliver_a_message_to_receivers(message)
+
+        self.output = self._interpolate(self.input_node.output)
+
+    def _update_statistics(self):
+        input_array = self.input_node.output
+        n = self._samples_collected
+        m = input_array.shape[TIME_AXIS]  # number of new samples
+        self._samples_collected += m
+
+        self._means = (self._means * n + np.sum(input_array, axis=TIME_AXIS)) / (n + m)
+        self._mean_sums_of_squares = (self._mean_sums_of_squares * n
+                                    + np.sum(input_array ** 2, axis=TIME_AXIS)) / (n + m)
+
+    def _calculate_standard_deviations(self):
+        n = self._samples_collected
+        return np.sqrt(n / (n - 1) * (self._mean_sums_of_squares - self._means ** 2))
+
+    def _calculate_interpolation_matrix(self):
+        mne_info = self.traverse_back_and_find('mne_info').copy()  # type: mne.Info
+        mne_info['bads'] = [mne_info['ch_names'][i] for i in self._bad_channel_indices]
+        print('The following channels: {bads} were marked as bad and will be interpolated'.format(
+            bads=mne_info['bads']
+        ))
+        return calculate_interpolation_matrix(mne_info)
+
+    def _interpolate(self, input_array: np.ndarray):
+        if input_array is None or self._interpolation_matrix is None:
+            return input_array
+        else:
+            if TIME_AXIS == 1:
+                return self._interpolation_matrix.dot(input_array)
+            elif TIME_AXIS == 0:
+                return self._interpolation_matrix.dot(input_array.T).T
+
+    UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = ('mne_info', )
 
 
 class InverseModel(ProcessorNode):
@@ -104,6 +174,7 @@ class InverseModel(ProcessorNode):
         channel_count = self._inverse_model_matrix.shape[0]
         channel_labels = ['vertex #{}'.format(i + 1) for i in range(channel_count)]
         self.mne_info = mne.create_info(channel_labels, frequency)
+
 
 class LinearFilter(ProcessorNode):
 
