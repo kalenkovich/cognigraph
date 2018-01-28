@@ -69,7 +69,7 @@ timer.setInterval(1000. / frequency * 10)
 
 source.loop_the_file = True
 source.MAX_SAMPLES_IN_CHUNK = 30
-envelope.disabled = True
+# envelope.disabled = True
 
 
 if __name__ == '__main__':
