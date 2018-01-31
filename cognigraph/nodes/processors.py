@@ -6,7 +6,8 @@ import mne
 from mne.preprocessing import find_outliers
 
 from .node import ProcessorNode, Message
-from ..helpers.matrix_functions import make_time_dimension_second, put_time_dimension_back_from_second
+from ..helpers.matrix_functions import (make_time_dimension_second, put_time_dimension_back_from_second,
+                                        apply_quad_form_to_columns)
 from ..helpers.inverse_model import get_inverse_model_matrix, get_inverse_model_matrix_from_labels
 from ..helpers.pynfb import pynfb_ndarray_function_wrapper, ExponentialMatrixSmoother
 from ..helpers.channels import calculate_interpolation_matrix
@@ -268,6 +269,93 @@ class EnvelopeExtractor(ProcessorNode):
     def _update(self):
         input = self.input_node.output
         self.output = self._envelope_extractor.apply(input)
+
+
+class Beamformer(ProcessorNode):
+
+    def __init__(self, snr: float =3.0, output_type: str ='power', is_adaptive: bool =False):
+        self.snr = snr
+        self.output_type = output_type
+        self.is_adaptive = is_adaptive
+        self.initialized_as_adaptive = None  # type: bool
+
+        self._gain_matrix = None  # np.ndarray
+        self._Rxx = None  # np.ndarray
+
+    def _initialize(self):
+
+        G = self._find_gain_matrix()
+        self._gain_matrix = G
+        self._Rxx = G.T.dot(G)
+        self.initialized_as_adaptive = self.is_adaptive
+
+    UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = ('mne_info',)
+    CHANGES_IN_THESE_REQUIRE_RESET = ('snr', 'output_type', 'is_adaptive')
+
+    def _update(self):
+
+        # Optimization
+        if not self._gain_matrix.flags['F_CONTIGUOUS']:
+            self._gain_matrix = np.asfortranarray(self._gain_matrix)
+
+        input_array = self.input_node.output
+
+        if self.is_adaptive is True:
+            # Update the "covariance" matrix Rxx
+            self._Rxx = self._update_covariance_matrix(input_array)
+
+        # Diagonal-load, then invert Rxx
+        _lambda = 1 / self.snr ** 2 * self._Rxx.trace()
+        electrode_count, sample_count = self._Rxx.shape[0]
+        Rxx_inv = np.linalg.inv(self._Rxx + _lambda * np.eye(electrode_count))
+
+        G = self._gain_matrix
+        power = 1 / apply_quad_form_to_columns(A=Rxx_inv, X=G)
+
+        if self.output_type == 'power':
+            # Power is estimated once per chunk, so we just repeat it for each sample
+            self.output = np.repeat(power[:, np.newaxis], sample_count, axis=1)
+
+        elif self.output_type == 'activation':
+            self.output = put_time_dimension_back_from_second(
+                G.T.dot(Rxx_inv).dot(make_time_dimension_second(input_array))
+            )
+
+    def _reset(self) -> bool:
+
+        # Only going from adaptive to non-adaptive requires reinitialization
+        if self.initialized_as_adaptive is True and self.is_adaptive is False:
+            self._should_reinitialize = True
+            self.initialize()
+
+        output_history_is_no_longer_valid = True
+        return output_history_is_no_longer_valid
+
+    def _on_input_history_invalidation(self):
+        # Only adaptive version relies on history
+        if self.initialized_as_adaptive is True:
+            self._should_reinitialize = True
+            self.initialize()
+
+    def _check_value(self, key, value):
+        if key == 'output_type':
+            supported_method = ('power', 'activation')
+            if value not in supported_method:
+                raise ValueError('Method {} is not supported. We support only {}'.format(value, supported_method))
+
+        if key == 'snr':
+            if value <= 0:
+                raise ValueError('snr (signal-to-noise ratio) must be a positive number. See mne-python docs.')
+
+        if key == 'is_adaptive':
+            if not isinstance(value, bool):
+                raise ValueError('Beamformer can either be adaptive or not. This should be a boolean')
+
+    def _find_gain_matrix(self):
+        raise NotImplementedError
+
+    def _update_covariance_matrix(self, input_array):
+        raise NotImplementedError
 
 
 # TODO: implement this function
