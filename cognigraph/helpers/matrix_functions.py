@@ -30,3 +30,10 @@ def last_sample(ndarray: np.ndarray):
         return ndarray[-1, :]
     else:
         raise ValueError
+
+
+def apply_quad_form_to_columns(A: np.ndarray, X: np.ndarray):
+    # Returns [x.T.dot(A).dot(x) for x in X.T] - quadratic form A applied to each column of X.
+    # Works about 20% faster if X is Fortran array (column-major).
+    # Use numpy.asfortranarray(X) to convert, X.flags.f_continuous to check.
+    return np.einsum('...i,...i->...', X.T.dot(A), X.T)

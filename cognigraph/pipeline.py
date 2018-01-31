@@ -91,7 +91,7 @@ class Pipeline(object):
         for node in self.all_nodes:
             node.update()
             if node is self.source and node.output is not None and node.output.size > 0:
-                print(node.output.shape[TIME_AXIS])
+                pass  # print(node.output.shape[TIME_AXIS])
 
     def run(self):
         while self.source.is_alive:  # TODO: also stop if all outputs are dead
