@@ -8,7 +8,8 @@ from mne.minimum_norm import read_inverse_operator
 from .. import MISC_CHANNEL_TYPE
 
 data_path = sample.data_path(verbose='ERROR')
-neuromag_inverse_file_path = os.path.join(data_path, 'MEG', 'sample', 'sample_audvis-meg-oct-6-meg-inv.fif')
+neuromag_forward_file_path = os.path.join(data_path, 'MEG', 'sample', 'sample_audvis-meg-oct-6-meg-inv.fif')
+neuromag_inverse_file_path = os.path.join(data_path, 'MEG', 'sample', 'sample_audvis-meg-oct-6-fwd.fif')
 standard_1005_forward_file_path = os.path.join(data_path, 'MEG', 'sample', 'sample_1005-eeg-oct-6-fwd.fif')
 standard_1005_inverse_file_path = os.path.join(data_path, 'MEG', 'sample', 'sample_1005-eeg-oct-6-eeg-inv.fif')
 
@@ -99,3 +100,21 @@ def get_inverse_model_matrix(mne_inverse_model_file_path, channel_labels, snr, m
     inverse_model_matrix = _pick_channels_from_matrix(full_inverse_model_matrix, channel_labels,
                                                       inverse_operator['info']['ch_names'])
     return inverse_model_matrix
+
+
+def get_default_forward_file(mne_info: mne.Info):
+    """
+    Based on the labels of channels in mne_info return either neuromag or standard 1005 forward model file
+    :param mne_info - mne.Info instance
+    :return: str: path to the forward-model file
+    """
+    channel_labels_upper = [channel_label.upper() for channel_label in mne_info['ch_names']]
+
+    if max(label.startswith('MEG ') for label in channel_labels_upper) is True:
+        return neuromag_forward_file_path
+
+    else:
+        montage_1005 = mne.channels.read_montage(kind='standard_1005')
+        montage_labels_upper = [montage_label.upper() for montage_label in montage_1005.ch_names]
+        if any([label_upper in montage_labels_upper for label_upper in channel_labels_upper]):
+            return standard_1005_forward_file_path
