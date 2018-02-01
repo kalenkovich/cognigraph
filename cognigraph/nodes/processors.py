@@ -9,7 +9,7 @@ from .node import ProcessorNode, Message
 from ..helpers.matrix_functions import (make_time_dimension_second, put_time_dimension_back_from_second,
                                         apply_quad_form_to_columns)
 from ..helpers.inverse_model import (get_inverse_model_matrix, get_inverse_model_matrix_from_labels,
-                                     get_default_forward_file)
+                                     get_default_forward_file, assemble_gain_matrix)
 from ..helpers.pynfb import pynfb_ndarray_function_wrapper, ExponentialMatrixSmoother
 from ..helpers.channels import calculate_interpolation_matrix
 from .. import TIME_AXIS
@@ -304,7 +304,7 @@ class Beamformer(ProcessorNode):
         mne_info = self.traverse_back_and_find('mne_info')
         if self._user_provided_forward_model_file_path is None:
             self._default_forward_model_file_path = get_default_forward_file(mne_info)
-        G = self._find_gain_matrix()
+        G = assemble_gain_matrix(self.mne_forward_model_file_path, mne_info)
         self._gain_matrix = G
         self._Rxx = G.T.dot(G)
         self.initialized_as_adaptive = self.is_adaptive
@@ -370,9 +370,6 @@ class Beamformer(ProcessorNode):
         if key == 'is_adaptive':
             if not isinstance(value, bool):
                 raise ValueError('Beamformer can either be adaptive or not. This should be a boolean')
-
-    def _find_gain_matrix(self):
-        raise NotImplementedError
 
     def _update_covariance_matrix(self, input_array):
         raise NotImplementedError
