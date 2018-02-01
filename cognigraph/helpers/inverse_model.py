@@ -6,6 +6,7 @@ from mne.datasets import sample
 from mne.minimum_norm import read_inverse_operator
 
 from .. import MISC_CHANNEL_TYPE
+from ..helpers.misc import all_upper
 
 data_path = sample.data_path(verbose='ERROR')
 sample_dir = os.path.join(data_path, 'MEG', 'sample')
@@ -17,7 +18,7 @@ standard_1005_inverse_file_path = os.path.join(sample_dir, 'sample_1005-eeg-oct-
 
 def _fake_standard_1005_info(channel_labels):
     montage_1005 = mne.channels.read_montage(kind='standard_1005')
-    montage_labels_upper = [label.upper() for label in montage_1005.ch_names]
+    montage_labels_upper = all_upper(montage_1005.ch_names)
     ch_types = ['eeg' if label.upper() in montage_labels_upper else MISC_CHANNEL_TYPE
                 for label in channel_labels]
     fake_info = mne.create_info(ch_names=channel_labels, sfreq=1000, ch_types=ch_types,)
@@ -41,7 +42,7 @@ def _make_standard_1005_inverse_operator(channel_labels):
 
 def get_inverse_model_matrix_from_labels(channel_labels, snr, method):
     montage_1005 = mne.channels.read_montage(kind='standard_1005')
-    montage_labels_upper = [montage_label.upper() for montage_label in montage_1005.ch_names]
+    montage_labels_upper = all_upper(montage_1005.ch_names)
 
     if max(label.startswith('MEG ') for label in channel_labels) is True:
 
@@ -114,14 +115,14 @@ def get_default_forward_file(mne_info: mne.Info):
     :param mne_info - mne.Info instance
     :return: str: path to the forward-model file
     """
-    channel_labels_upper = [channel_label.upper() for channel_label in mne_info['ch_names']]
+    channel_labels_upper = all_upper(mne_info['ch_names'])
 
     if max(label.startswith('MEG ') for label in channel_labels_upper) is True:
         return neuromag_forward_file_path
 
     else:
         montage_1005 = mne.channels.read_montage(kind='standard_1005')
-        montage_labels_upper = [montage_label.upper() for montage_label in montage_1005.ch_names]
+        montage_labels_upper = all_upper(montage_1005.ch_names)
         if any([label_upper in montage_labels_upper for label_upper in channel_labels_upper]):
             return standard_1005_forward_file_path
 
@@ -134,11 +135,11 @@ def assemble_gain_matrix(forward_model_path: str, mne_info: mne.Info):
     :return: np.ndarray with as many rows as there are dipoles in the forward model and as many rows as there are
     channels in mne_info. Throws an error if less than half of channels are present in the forward model.
     """
-    channel_labels_upper = [channel_label.upper() for channel_label in mne_info['ch_names']]
+    channel_labels_upper = all_upper(mne_info['ch_names'])
 
     forward = mne.read_forward_solution(forward_model_path, verbose='ERROR')
     mne.convert_forward_solution(forward, force_fixed=True, copy=False, verbose='ERROR')
     G_forward = forward['sol']['data']
-    channel_labels_forward = [label.upper() for label in forward['info']['ch_names']]
+    channel_labels_forward = all_upper(forward['info']['ch_names'])
 
     return _pick_channels_from_matrix(G_forward.T, channel_labels_upper, channel_labels_forward).T
