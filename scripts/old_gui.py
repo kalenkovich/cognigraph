@@ -17,7 +17,7 @@ source = sources.BrainvisionSource(file_path=file_path)
 pipeline.source = source
 
 # Processors
-preprocessing = processors.Preprocessing()
+preprocessing = processors.Preprocessing(collect_for_x_seconds=120)
 pipeline.add_processor(preprocessing)
 
 linear_filter = processors.LinearFilter(lower_cutoff=None, upper_cutoff=None)

@@ -138,6 +138,9 @@ class InverseModel(ProcessorNode):
         super().__init__()
         self._inverse_model_matrix = None
         self._user_provided_inverse_model_file_path = mne_inverse_model_file_path
+        # If user did not provide the inverse-model file, then the next property will be populated by a pseudo-path to a
+        # non-existing inverse-model file in the mne's sample dataset folder. This is necessary for the nodes further
+        # down the pipeline to find the anatomy folder.
         self._mne_inverse_model_file_path = mne_inverse_model_file_path
         self.snr = snr
         self.method = method
