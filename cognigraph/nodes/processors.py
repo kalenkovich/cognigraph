@@ -8,7 +8,8 @@ from mne.preprocessing import find_outliers
 from .node import ProcessorNode, Message
 from ..helpers.matrix_functions import (make_time_dimension_second, put_time_dimension_back_from_second,
                                         apply_quad_form_to_columns)
-from ..helpers.inverse_model import get_inverse_model_matrix, get_inverse_model_matrix_from_labels
+from ..helpers.inverse_model import (get_inverse_model_matrix, get_inverse_model_matrix_from_labels,
+                                     get_default_forward_file)
 from ..helpers.pynfb import pynfb_ndarray_function_wrapper, ExponentialMatrixSmoother
 from ..helpers.channels import calculate_interpolation_matrix
 from .. import TIME_AXIS
@@ -276,17 +277,33 @@ class EnvelopeExtractor(ProcessorNode):
 
 class Beamformer(ProcessorNode):
 
-    def __init__(self, snr: float =3.0, output_type: str ='power', is_adaptive: bool =False):
+    def __init__(self, snr: float =3.0, output_type: str ='power', is_adaptive: bool =False, forward_model_path=None):
+
         self.snr = snr
         self.output_type = output_type
         self.is_adaptive = is_adaptive
         self.initialized_as_adaptive = None  # type: bool
 
+        self._user_provided_forward_model_file_path = forward_model_path
+        self._default_forward_model_file_path = None
+
         self._gain_matrix = None  # np.ndarray
         self._Rxx = None  # np.ndarray
 
+    @property
+    def mne_forward_model_file_path(self):
+        return self._user_provided_forward_model_file_path or self._default_forward_model_file_path
+
+    @mne_forward_model_file_path.setter
+    def mne_forward_model_file_path(self, value):
+        # This setter is for public use, hence the "user_provided"
+        self._user_provided_forward_model_file_path = value
+
     def _initialize(self):
 
+        mne_info = self.traverse_back_and_find('mne_info')
+        if self._user_provided_forward_model_file_path is None:
+            self._default_forward_model_file_path = get_default_forward_file(mne_info)
         G = self._find_gain_matrix()
         self._gain_matrix = G
         self._Rxx = G.T.dot(G)
