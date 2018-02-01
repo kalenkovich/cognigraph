@@ -8,10 +8,11 @@ from mne.minimum_norm import read_inverse_operator
 from .. import MISC_CHANNEL_TYPE
 
 data_path = sample.data_path(verbose='ERROR')
-neuromag_forward_file_path = os.path.join(data_path, 'MEG', 'sample', 'sample_audvis-meg-oct-6-meg-inv.fif')
-neuromag_inverse_file_path = os.path.join(data_path, 'MEG', 'sample', 'sample_audvis-meg-oct-6-fwd.fif')
-standard_1005_forward_file_path = os.path.join(data_path, 'MEG', 'sample', 'sample_1005-eeg-oct-6-fwd.fif')
-standard_1005_inverse_file_path = os.path.join(data_path, 'MEG', 'sample', 'sample_1005-eeg-oct-6-eeg-inv.fif')
+sample_dir = os.path.join(data_path, 'MEG', 'sample')
+neuromag_forward_file_path = os.path.join(sample_dir, 'sample_audvis-meg-oct-6-meg-inv.fif')
+neuromag_inverse_file_path = os.path.join(sample_dir, 'sample_audvis-meg-oct-6-fwd.fif')
+standard_1005_forward_file_path = os.path.join(sample_dir, 'sample_1005-eeg-oct-6-fwd.fif')
+standard_1005_inverse_file_path = os.path.join(sample_dir, 'sample_1005-eeg-oct-6-eeg-inv.fif')
 
 
 def _fake_standard_1005_info(channel_labels):
