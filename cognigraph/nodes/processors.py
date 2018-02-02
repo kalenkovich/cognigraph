@@ -277,6 +277,8 @@ class EnvelopeExtractor(ProcessorNode):
 
 class Beamformer(ProcessorNode):
 
+    SUPPORTED_OUTPUT_TYPES = ('power', 'activation')
+
     def __init__(self, snr: float =3.0, output_type: str ='power', is_adaptive: bool =False, forward_model_path=None,
                  forgetting_factor_per_second=0.99):
 
@@ -291,7 +293,7 @@ class Beamformer(ProcessorNode):
         self._gain_matrix = None  # np.ndarray
         self._Rxx = None  # np.ndarray
         self._Rxx_inv = None  # np.ndarray
-        self._forgetting_factor_per_second = forgetting_factor_per_second
+        self.forgetting_factor_per_second = forgetting_factor_per_second
         self._forgetting_factor_per_sample = None
 
     @property
@@ -376,9 +378,9 @@ class Beamformer(ProcessorNode):
 
     def _check_value(self, key, value):
         if key == 'output_type':
-            supported_method = ('power', 'activation')
-            if value not in supported_method:
-                raise ValueError('Method {} is not supported. We support only {}'.format(value, supported_method))
+            if value not in self.SUPPORTED_OUTPUT_TYPES:
+                raise ValueError('Method {} is not supported. We support only {}'
+                                 .format(value, self.SUPPORTED_OUTPUT_TYPES))
 
         if key == 'snr':
             if value <= 0:

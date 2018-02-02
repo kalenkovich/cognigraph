@@ -151,3 +151,54 @@ class EnvelopeExtractorControls(ProcessorNodeControls):
     def _on_factor_changed(self):
         pass  # TODO: implement
 
+
+class BeamformerControls(ProcessorNodeControls):
+    PROCESSOR_CLASS = processors.Beamformer
+    CONTROLS_LABEL = 'Beamformer'
+
+    ADAPTIVENESS_NAME = 'Use adaptive version: '
+    SNR_NAME = 'SNR: '
+    OUTPUT_TYPE_COMBO_NAME = 'Output type: '
+    FORGETTING_FACTOR_NAME = 'Forgetting factor (per second): '
+
+    def _create_parameters(self):
+        # snr: float = 3.0, output_type: str = 'power', is_adaptive: bool = False,
+        # forgetting_factor_per_second = 0.99
+        is_adaptive = self._processor_node.is_adaptive
+        adaptiveness_check = parameterTypes.SimpleParameter(type='bool', name=self.ADAPTIVENESS_NAME, value=is_adaptive,
+                                                            readonly=False)
+        adaptiveness_check.sigValueChanged.connect(self._on_adaptiveness_changed)
+        self.adaptiveness_check = self.addChild(adaptiveness_check)
+
+        snr_value = self._processor_node.snr
+        snr_spin_box = parameterTypes.SimpleParameter(type='float', name=self.SNR_NAME,
+                                                      decimals=1, limits=(1.0, 10.0), value=snr_value)
+        snr_spin_box.sigValueChanged.connect(self._on_snr_changed)
+        self.snr_spin_box = self.addChild(snr_spin_box)
+
+        output_type_value = self._processor_node.output_type
+        output_type_values = self.PROCESSOR_CLASS.SUPPORTED_OUTPUT_TYPES
+        output_type_combo = parameterTypes.ListParameter(name=self.OUTPUT_TYPE_COMBO_NAME,
+                                                         values=output_type_values, value=output_type_value)
+        output_type_combo.sigValueChanged.connect(self._on_output_type_changed)
+        self.output_type_combo = self.addChild(output_type_combo)
+
+        forgetting_factor_value = self._processor_node.forgetting_factor_per_second
+        forgetting_factor_spin_box = parameterTypes.SimpleParameter(type='float', name=self.FORGETTING_FACTOR_NAME,
+                                                                    decimals=2, limits=(0.90, 0.99),
+                                                                    value=forgetting_factor_value)
+        forgetting_factor_spin_box.sigValueChanged.connect(self._on_forgetting_factor_changed)
+        self.forgetting_factor_spin_box.addChild(forgetting_factor_spin_box)
+
+    def _on_adaptiveness_changed(self, param, value):
+        self.forgetting_factor_spin_box.show(value)
+        self._processor_node.is_adaptive = value
+
+    def _on_snr_changed(self, param, value):
+        self._processor_node.snr = value
+
+    def _on_output_type_changed(self, param, value):
+        self._processor_node.output_type = value
+
+    def _on_forgetting_factor_changed(self, param, value):
+        self._processor_node.forgetting_factor_per_second = value
