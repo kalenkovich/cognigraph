@@ -277,7 +277,8 @@ class EnvelopeExtractor(ProcessorNode):
 
 class Beamformer(ProcessorNode):
 
-    def __init__(self, snr: float =3.0, output_type: str ='power', is_adaptive: bool =False, forward_model_path=None):
+    def __init__(self, snr: float =3.0, output_type: str ='power', is_adaptive: bool =False, forward_model_path=None,
+                 forgetting_factor_per_second=0.99):
 
         self.snr = snr
         self.output_type = output_type
@@ -289,6 +290,9 @@ class Beamformer(ProcessorNode):
 
         self._gain_matrix = None  # np.ndarray
         self._Rxx = None  # np.ndarray
+        self._Rxx_inv = None  # np.ndarray
+        self._forgetting_factor_per_second = forgetting_factor_per_second
+        self._forgetting_factor_per_sample = None
 
     @property
     def mne_forward_model_file_path(self):
@@ -302,12 +306,21 @@ class Beamformer(ProcessorNode):
     def _initialize(self):
 
         mne_info = self.traverse_back_and_find('mne_info')
+
         if self._user_provided_forward_model_file_path is None:
             self._default_forward_model_file_path = get_default_forward_file(mne_info)
+
         G = assemble_gain_matrix(self.mne_forward_model_file_path, mne_info)
         self._gain_matrix = G
-        self._Rxx = G.T.dot(G)
+
+        if self.is_adaptive is False:
+            self._Rxx = G.T.dot(G)
+        elif self.is_adaptive is True:
+            self._Rxx = 0
         self.initialized_as_adaptive = self.is_adaptive
+
+        frequency = mne_info['sfreq']
+        self._forgetting_factor_per_sample = np.power(self._forgetting_factor_per_sample, 1 / frequency)
 
     UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = ('mne_info',)
     CHANGES_IN_THESE_REQUIRE_RESET = ('snr', 'output_type', 'is_adaptive')
@@ -322,12 +335,16 @@ class Beamformer(ProcessorNode):
 
         if self.is_adaptive is True:
             # Update the "covariance" matrix Rxx
-            self._Rxx = self._update_covariance_matrix(input_array)
+            self._update_covariance_matrix(input_array)
 
-        # Diagonal-load, then invert Rxx
-        _lambda = 1 / self.snr ** 2 * self._Rxx.trace()
-        electrode_count, sample_count = self._Rxx.shape[0]
-        Rxx_inv = np.linalg.inv(self._Rxx + _lambda * np.eye(electrode_count))
+        # Diagonal-load, then invert Rxx. Once for non-adaptive, each time for adaptive
+        if self.is_adaptive is True or self._Rxx_inv is None:
+            _lambda = 1 / self.snr ** 2 * self._Rxx.trace()
+            electrode_count, sample_count = self._Rxx.shape[0]
+            Rxx_inv = np.linalg.inv(self._Rxx + _lambda * np.eye(electrode_count))
+
+        if self.is_adaptive is False:
+            self._Rxx_inv = Rxx_inv
 
         G = self._gain_matrix
         power = 1 / apply_quad_form_to_columns(A=Rxx_inv, X=G)
@@ -343,8 +360,8 @@ class Beamformer(ProcessorNode):
 
     def _reset(self) -> bool:
 
-        # Only going from adaptive to non-adaptive requires reinitialization
-        if self.initialized_as_adaptive is True and self.is_adaptive is False:
+        # Only changing adaptiveness requires reinitialization
+        if self.initialized_as_adaptive is not self.is_adaptive:
             self._should_reinitialize = True
             self.initialize()
 
@@ -372,7 +389,11 @@ class Beamformer(ProcessorNode):
                 raise ValueError('Beamformer can either be adaptive or not. This should be a boolean')
 
     def _update_covariance_matrix(self, input_array):
-        raise NotImplementedError
+        alpha = self._forgetting_factor_per_sample
+        sample_count = input_array.shape[TIME_AXIS]
+        # Exponential smoothing of XX'
+        for sample in make_time_dimension_second(input_array).T:
+            self._Rxx = alpha * self._Rxx + (1 - alpha) * sample.dot(sample.T)
 
 
 # TODO: implement this function
