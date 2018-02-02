@@ -16,6 +16,7 @@ from .. import CHANNEL_AXIS
 from ..helpers.lsl import convert_numpy_format_to_lsl, convert_numpy_array_to_lsl_chunk, create_lsl_outlet
 from ..helpers.matrix_functions import last_sample, make_time_dimension_second
 from ..helpers.ring_buffer import RingBuffer
+from ..helpers.channels import read_channel_types
 
 
 class LSLStreamOutput(OutputNode):
@@ -55,9 +56,10 @@ class LSLStreamOutput(OutputNode):
         mne_info = self.traverse_back_and_find('mne_info')
         frequency = mne_info['sfreq']
         channel_labels = mne_info['ch_names']
+        channel_types = read_channel_types(mne_info)
 
         self._outlet = create_lsl_outlet(name=self.stream_name, frequency=frequency, channel_format=channel_format,
-                                         channel_labels=channel_labels)
+                                         channel_labels=channel_labels, channel_types=channel_types)
 
     def _update(self):
         chunk = self.input_node.output
