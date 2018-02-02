@@ -52,3 +52,7 @@ def fill_eeg_channel_locations(info: mne.Info):
 def _set_channel_as_misc(channel):
     kind = _kind_dict[MISC_CHANNEL_TYPE][0]
     channel['kind'] = kind
+
+
+def read_channel_types(info: mne.Info):
+    return [mne.io.pick.channel_type(info, i) for i in range(info['nchan'])]
