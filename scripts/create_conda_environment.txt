@@ -1,4 +1,4 @@
-conda create -n cognigraph python=3.5.3 pyqt=4 pyqtgraph ipython
+conda create -n cognigraph python=3.5.3 pyqt=4 pyqtgraph=0.9 ipython scipy=0.19
 activate conda
 pip install pylsl expyriment
 conda install -c conda-forge mne=0.15
