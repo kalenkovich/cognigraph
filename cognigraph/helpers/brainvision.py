@@ -32,12 +32,12 @@ def read_brain_vision_data(vhdr_file_path, time_axis, start_s: int=0, stop_s: in
 
     # Get the required time slice. mne.io.Raw.get_data takes array indices, not time
     start = 0 if start_s is None else raw.time_as_index(start_s)[0]
-    stop = min(raw.n_times if stop_s is None else raw.time_as_index(stop_s), raw.n_times)
+    stop = min(raw.n_times if stop_s is None else raw.time_as_index(stop_s)[0], raw.n_times)
     data = raw.get_data(start=start, stop=stop)
 
     mne_info = raw.info.copy()
 
-    if time_axis == BRAINVISION_TIME_AXIS:
+    if time_axis != BRAINVISION_TIME_AXIS:
         data = data.T
 
     return data, mne_info
