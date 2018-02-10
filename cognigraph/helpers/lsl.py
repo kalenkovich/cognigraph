@@ -52,7 +52,7 @@ def convert_lsl_chunk_to_numpy_array(lsl_chunk, dtype=None):
     not. In LSL time is the first dimension. We might or might not adhere to this convention, which is reflected in the
     TIME_AXIS constant from the base package.
     """
-    ndarray = np.array(lsl_chunk, dtype=dtype)
+    ndarray = np.array(lsl_chunk).astype(dtype=dtype)
     return _transpose_if_need_be(ndarray)
 
 
