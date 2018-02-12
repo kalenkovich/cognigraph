@@ -1,7 +1,4 @@
-# This script requires mayavi and thus python 2.7
-
 from mayavi import mlab
-%gui qt
 
 import os
 
@@ -45,13 +42,5 @@ fwd_file_path = os.path.join(data_path, 'MEG', 'sample', 'sample_1005-eeg-oct-6-
 mne.write_forward_solution(fwd_file_path, fwd)
 fwd = mne.read_forward_solution(fwd_file_path)
 
-cov = mne.Covariance(data=np.identity(fake_info['nchan']),
-                     names=fake_info['ch_names'],
-                     bads=fake_info['bads'],
-                     projs=fake_info['projs'],
-                     nfree=1)
 
-inv = mne.minimum_norm.make_inverse_operator(fake_info, fwd, cov)
-inv_file_path = os.path.join(data_path, 'MEG', 'sample', 'sample_1005-eeg-oct-6-eeg-inv.fif')
-mne.minimum_norm.write_inverse_operator(inv_file_path, inv=inv)
 

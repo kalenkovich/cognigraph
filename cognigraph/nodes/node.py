@@ -252,8 +252,9 @@ class SourceNode(Node):
         super().initialize()
         try:
             self._check_mne_info()
-        except:
+        except ValueError as e:
             self._initialized = False
+            raise e
 
     def _check_mne_info(self):
         class_name = class_name_of(self)
@@ -269,7 +270,7 @@ class SourceNode(Node):
         channel_types = {channel_type(self.mne_info, i) for i in np.arange(channel_count)}
         required_channel_types = {'grad', 'mag', 'eeg'}
         if len(channel_types.intersection(required_channel_types)) == 0:
-            raise ValueError('{}')
+            raise ValueError('{} has no channels of types {}'.format(class_name, required_channel_types) + error_hint)
 
         try:
             self.mne_info._check_consistency()

@@ -20,14 +20,19 @@ pipeline.source = source
 preprocessing = processors.Preprocessing(collect_for_x_seconds=120)
 pipeline.add_processor(preprocessing)
 
-linear_filter = processors.LinearFilter(lower_cutoff=None, upper_cutoff=None)
+linear_filter = processors.LinearFilter(lower_cutoff=8.0, upper_cutoff=12.0)
 pipeline.add_processor(linear_filter)
 
-pipeline.add_processor(processors.InverseModel(method='MNE'))
-pipeline.add_processor(processors.EnvelopeExtractor())
+inverse_model = processors.InverseModel(method='MNE', snr=3.0)
+pipeline.add_processor(inverse_model)
+
+envelope_extractor = processors.EnvelopeExtractor()
+pipeline.add_processor(envelope_extractor)
 
 # Outputs
-pipeline.add_output(outputs.ThreeDeeBrain())
+global_mode = outputs.ThreeDeeBrain.LIMITS_MODES.GLOBAL
+three_dee_brain = outputs.ThreeDeeBrain(limits_mode=global_mode, buffer_length=6)
+pipeline.add_output(three_dee_brain)
 pipeline.add_output(outputs.LSLStreamOutput())
 # pipeline.initialize_all_nodes()
 

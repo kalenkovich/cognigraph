@@ -76,7 +76,8 @@ class Preprocessing(ProcessorNode):
         self.output = self._interpolate(self.input_node.output)
 
     def _update_statistics(self):
-        input_array = self.input_node.output
+        input_array = self.input_node.output.astype(np.dtype('float64'))
+        # Using float64 is necessary because otherwise rounding error in recursive formula accumulate
         n = self._samples_collected
         m = input_array.shape[TIME_AXIS]  # number of new samples
         self._samples_collected += m

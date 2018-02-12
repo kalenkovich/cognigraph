@@ -5,9 +5,9 @@ import pylsl as lsl
 import numpy as np
 import mne
 
-from .. import TIME_AXIS
+from .. import TIME_AXIS, DTYPE
 from .node import SourceNode
-from ..helpers.lsl import convert_lsl_chunk_to_numpy_array, convert_lsl_format_to_numpy
+from ..helpers.lsl import convert_lsl_chunk_to_numpy_array, convert_lsl_format_to_numpy, read_channel_labels_from_info
 from ..helpers.brainvision import read_brain_vision_data
 
 
@@ -30,6 +30,10 @@ class LSLStreamSource(SourceNode):
     def stream_name(self):
         return self.source_name
 
+    @property
+    def frequency(self):
+        return self.mne_info['sfreq']
+
     @stream_name.setter
     def stream_name(self, stream_name):
         self.source_name = stream_name
@@ -47,27 +51,13 @@ class LSLStreamSource(SourceNode):
             self._inlet = lsl.StreamInlet(info)
             self._inlet.open_stream()
             frequency = info.nominal_srate()
-            self.dtype = convert_lsl_format_to_numpy(self._inlet.channel_format)
-            channel_labels = self._read_channel_labels_from_info(self._inlet.info())
-            self.mne_info = mne.create_info(channel_labels, frequency)
-
-    @staticmethod
-    def _read_channel_labels_from_info(info: lsl.StreamInfo):
-        channels_tag = info.desc().child('channels')
-        if channels_tag.empty():
-            return None
-        else:
-            # TODO: this is hard to read. Write a generator for children with a given name in helpers
-            labels = list()
-            single_channel_tag = channels_tag.child(name="channel")
-            for channel_id in range(info.channel_count()):
-                labels.append(single_channel_tag.child_value(name='label'))
-                single_channel_tag = single_channel_tag.next_sibling(name='channel')
-            return labels
+            self.dtype = DTYPE
+            channel_labels, channel_types = read_channel_labels_from_info(self._inlet.info())
+            self.mne_info = mne.create_info(channel_labels, frequency, ch_types=channel_types)
 
     def _update(self):
         lsl_chunk, timestamps = self._inlet.pull_chunk()
-        self.output = convert_lsl_chunk_to_numpy_array(lsl_chunk)
+        self.output = convert_lsl_chunk_to_numpy_array(lsl_chunk, dtype=self.dtype)
 
 
 class BrainvisionSource(SourceNode):
@@ -116,7 +106,8 @@ class BrainvisionSource(SourceNode):
             vhdr_file_path = os.path.splitext(self.file_path)[0] + '.vhdr'
             self.data, self.mne_info = \
                 read_brain_vision_data(vhdr_file_path=vhdr_file_path, time_axis=TIME_AXIS)
-            self.dtype = self.data.dtype
+            self.dtype = DTYPE
+            self.data = self.data.astype(self.dtype)
 
     def _update(self):
         if self.data is None:
