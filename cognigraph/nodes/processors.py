@@ -128,7 +128,6 @@ class InverseModel(ProcessorNode):
                 raise ValueError('snr (signal-to-noise ratio) must be a positive number. See mne-python docs.')
 
     def _reset(self):
-        self.mne_inverse_model_file_path = self._user_provided_inverse_model_file_path
         self._should_reinitialize = True
         self.initialize()
         output_history_is_no_longer_valid = True
@@ -148,12 +147,13 @@ class InverseModel(ProcessorNode):
         self.method = method
 
     @property
-    def mne_inverse_model_file_path(self):
-        return self._mne_inverse_model_file_path
+    def mne_forward_model_file_path(self):
+        return self._user_provided_forward_model_file_path or self._default_forward_model_file_path
 
-    @mne_inverse_model_file_path.setter
-    def mne_inverse_model_file_path(self, value):
-        self._user_provided_inverse_model_file_path = self._mne_inverse_model_file_path = value
+    @mne_forward_model_file_path.setter
+    def mne_forward_model_file_path(self, value):
+        # This setter is for public use, hence the "user_provided"
+        self._user_provided_forward_model_file_path = value
 
     def _update(self):
         input_array = self.input_node.output
