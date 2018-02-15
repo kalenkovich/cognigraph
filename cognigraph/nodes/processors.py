@@ -8,8 +8,8 @@ from mne.preprocessing import find_outliers
 from .node import ProcessorNode, Message
 from ..helpers.matrix_functions import (make_time_dimension_second, put_time_dimension_back_from_second,
                                         apply_quad_form_to_columns)
-from ..helpers.inverse_model import (get_inverse_model_matrix, get_inverse_model_matrix_from_labels,
-                                     get_default_forward_file, assemble_gain_matrix)
+from ..helpers.inverse_model import (get_default_forward_file, assemble_gain_matrix, make_inverse_operator,
+                                     matrix_from_inverse_operator)
 from ..helpers.pynfb import pynfb_ndarray_function_wrapper, ExponentialMatrixSmoother
 from ..helpers.channels import calculate_interpolation_matrix
 from .. import TIME_AXIS
@@ -136,18 +136,16 @@ class InverseModel(ProcessorNode):
 
     SUPPORTED_METHODS = ['MNE', 'dSPM', 'sLORETA']
 
-    def __init__(self, mne_inverse_model_file_path=None, snr=1.0, method='MNE'):
+    def __init__(self, forward_model_path=None, snr=1.0, method='MNE'):
         super().__init__()
-        self._inverse_model_matrix = None
-        self._user_provided_inverse_model_file_path = mne_inverse_model_file_path
-        # If user did not provide the inverse-model file, then the next property will be populated by a pseudo-path to a
-        # non-existing inverse-model file in the mne's sample dataset folder. This is necessary for the nodes further
-        # down the pipeline to find the anatomy folder.
-        self._mne_inverse_model_file_path = mne_inverse_model_file_path
-        self.snr = snr
-        self.method = method
 
+        self.snr = snr
+        self._user_provided_forward_model_file_path = forward_model_path
+        self._default_forward_model_file_path = None
         self.mne_info = None
+
+        self._inverse_model_matrix = None
+        self.method = method
 
     @property
     def mne_inverse_model_file_path(self):
@@ -168,13 +166,16 @@ class InverseModel(ProcessorNode):
 
     def _initialize(self):
         mne_info = self.traverse_back_and_find('mne_info')
-        channel_labels = mne_info['ch_names']
-        if self._user_provided_inverse_model_file_path is None:
-            self._inverse_model_matrix, self._mne_inverse_model_file_path = \
-                get_inverse_model_matrix_from_labels(channel_labels, snr=self.snr, method=self.method)
-        else:
-            self._inverse_model_matrix = get_inverse_model_matrix(self._user_provided_inverse_model_file_path,
-                                                                  channel_labels, snr=self.snr, method=self.method)
+
+        if self._user_provided_forward_model_file_path is None:
+            self._default_forward_model_file_path = get_default_forward_file(mne_info)
+
+        G = assemble_gain_matrix(self.mne_forward_model_file_path, mne_info)
+        self._gain_matrix = G
+
+        inverse_operator = make_inverse_operator(self.mne_forward_model_file_path, mne_info)
+        self._inverse_model_matrix = matrix_from_inverse_operator(inverse_operator=inverse_operator, mne_info=mne_info,
+                                                                  snr=self.snr, method=self.method)
 
         frequency = mne_info['sfreq']
         channel_count = self._inverse_model_matrix.shape[0]
