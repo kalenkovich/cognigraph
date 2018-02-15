@@ -81,7 +81,7 @@ class ThreeDeeBrain(OutputNode):
         self._limits_buffer.clear()
 
     UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = (
-        'mne_inverse_model_file_path', 'mne_info'
+        'mne_forward_model_file_path', 'mne_info'
     )
 
     LIMITS_MODES = SimpleNamespace(GLOBAL='Global', LOCAL='Local', MANUAL='Manual')
@@ -110,8 +110,8 @@ class ThreeDeeBrain(OutputNode):
         self._brain_painter.threshold_pct = value
 
     def _initialize(self):
-        mne_inverse_model_file_path = self.traverse_back_and_find('mne_inverse_model_file_path')
-        self._brain_painter.initialize(mne_inverse_model_file_path)
+        mne_forward_model_file_path = self.traverse_back_and_find('mne_forward_model_file_path')
+        self._brain_painter.initialize(mne_forward_model_file_path)
 
         frequency = self.traverse_back_and_find('mne_info')['sfreq']
         buffer_sample_count = np.int(self.buffer_length * frequency)
@@ -186,10 +186,10 @@ class BrainPainter(object):
         self.background_colors = None  # type: np.ndarray  # N x 4
         self.mesh_item = None  # type: gl.GLMeshItem
 
-    def initialize(self, mne_inverse_model_file_path):
-        self.surfaces_dir = self.surfaces_dir or self._guess_surfaces_dir_based_on(mne_inverse_model_file_path)
+    def initialize(self, mne_forward_model_file_path):
+        self.surfaces_dir = self.surfaces_dir or self._guess_surfaces_dir_based_on(mne_forward_model_file_path)
         self.mesh_data = self._get_mesh_data_from_surfaces_dir()
-        self.smoothing_matrix = self._get_smoothing_matrix(mne_inverse_model_file_path)
+        self.smoothing_matrix = self._get_smoothing_matrix(mne_forward_model_file_path)
 
         if self.widget is None:
             self.widget = self._create_widget()
@@ -241,16 +241,16 @@ class BrainPainter(object):
 
         return mesh_data
 
-    def _get_mesh_data_from_inverse_operator(self, inverse_operator_file_path) -> (list, gl.MeshData):
-        # mne's inverse operator is a dict with the geometry information under the key 'src'.
-        # inverse_operator['src'] is a list two items each of which corresponds to one hemisphere.
-        inverse_operator = mne.minimum_norm.read_inverse_operator(inverse_operator_file_path, verbose='ERROR')
-        left_hemi, right_hemi = inverse_operator['src']
+    def _get_mesh_data_from_forward_solution(self, forward_solution_file_path) -> (list, gl.MeshData):
+        # mne's forward solution is a dict with the geometry information under the key 'src'.
+        # forward_solution['src'] is a list two items each of which corresponds to one hemisphere.
+        forward_solution = mne.read_forward_solution(forward_solution_file_path, verbose='ERROR')
+        left_hemi, right_hemi = forward_solution['src']
 
         # Each hemisphere is represented by a dict containing the list of all vertices from the original mesh (with
         # default options in FreeSurfer that is ~150K vertices). These are stored under the key 'rr'.
 
-        # Only a small subset of these vertices was likely used during the construction of the inverse operator. The
+        # Only a small subset of these vertices was likely used during the construction of the forward solution. The
         # mesh containing only the used vertices is represented by an array of faces stored under the 'use_tris' key.
         # This submesh still contains some extra vertices so that it is still a manifold.
 
@@ -285,10 +285,10 @@ class BrainPainter(object):
             return np.tile(background_color, total_vertex_cnt)
 
     @staticmethod
-    def _guess_surfaces_dir_based_on(mne_inverse_model_file_path):
-        # If tha inverse model that was used is from the mne's sample dataset, then we can use curvatures from there
+    def _guess_surfaces_dir_based_on(mne_forward_model_file_path):
+        # If the forward model that was used is from the mne's sample dataset, then we can use curvatures from there
         path_to_sample = os.path.realpath(sample.data_path(verbose='ERROR'))
-        if os.path.realpath(mne_inverse_model_file_path).startswith(path_to_sample):
+        if os.path.realpath(mne_forward_model_file_path).startswith(path_to_sample):
             return os.path.join(path_to_sample, "subjects", "sample", "surf")
 
     @staticmethod
@@ -307,19 +307,19 @@ class BrainPainter(object):
 
         return smooth_mat_lh.tocsc() + smooth_mat_rh.tocsc()
 
-    def _get_smoothing_matrix(self, mne_inverse_model_file_path):
+    def _get_smoothing_matrix(self, mne_forward_model_file_path):
         """Creates or loads a smoothing matrix that lets us interpolate source values onto all mesh vertices"""
-        # Not all the vertices in the inverse model mesh are sources. sources_idx actually indexes into the union of
+        # Not all the vertices in the forward solution mesh are sources. sources_idx actually indexes into the union of
         # high-definition meshes for left and right hemispheres. The smoothing matrix then lets us assign a color to
-        # each vertex. If in future we decide to use low-definition mesh from the inverse model for drawing, we should
+        # each vertex. If in future we decide to use low-definition mesh from the forward model for drawing, we should
         # index into that.
         # Shorter: the coordinates of the jth source are in self.mesh_data.vertexes()[sources_idx[j], :]
-        smoothing_matrix_file_path = os.path.splitext(mne_inverse_model_file_path)[0] + '-smoothing-matrix.npz'
+        smoothing_matrix_file_path = os.path.splitext(mne_forward_model_file_path)[0] + '-smoothing-matrix.npz'
         try:
             return sparse.load_npz(smoothing_matrix_file_path)
         except FileNotFoundError:
             print('Calculating smoothing matrix. This might take a while the first time.')
-            sources_idx, _ = self._get_mesh_data_from_inverse_operator(mne_inverse_model_file_path)
+            sources_idx, _ = self._get_mesh_data_from_forward_solution(mne_forward_model_file_path)
             adj_mat = mesh_edges(self.mesh_data.faces())
             smoothing_matrix = calculate_smoothing_matrix(sources_idx, adj_mat)
             sparse.save_npz(smoothing_matrix_file_path, smoothing_matrix)
