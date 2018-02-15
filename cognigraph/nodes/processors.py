@@ -283,14 +283,16 @@ class Beamformer(ProcessorNode):
 
     def __init__(self, snr: float =3.0, output_type: str ='power', is_adaptive: bool =False, forward_model_path=None,
                  forgetting_factor_per_second=0.99):
+        super().__init__()
 
         self.snr = snr
+        self._user_provided_forward_model_file_path = forward_model_path
+        self._default_forward_model_file_path = None
+        self.mne_info = None
+
         self.output_type = output_type
         self.is_adaptive = is_adaptive
         self.initialized_as_adaptive = None  # type: bool
-
-        self._user_provided_forward_model_file_path = forward_model_path
-        self._default_forward_model_file_path = None
 
         self._gain_matrix = None  # np.ndarray
         self._Rxx = None  # np.ndarray
@@ -308,7 +310,6 @@ class Beamformer(ProcessorNode):
         self._user_provided_forward_model_file_path = value
 
     def _initialize(self):
-
         mne_info = self.traverse_back_and_find('mne_info')
 
         if self._user_provided_forward_model_file_path is None:
