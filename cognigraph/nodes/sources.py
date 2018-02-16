@@ -5,6 +5,7 @@ import pylsl as lsl
 import numpy as np
 import mne
 
+from cognigraph.helpers.matrix_functions import get_a_time_slice
 from .. import TIME_AXIS, DTYPE
 from .node import SourceNode
 from ..helpers.lsl import convert_lsl_chunk_to_numpy_array, convert_lsl_format_to_numpy, read_channel_labels_from_info
@@ -120,22 +121,25 @@ class BrainvisionSource(SourceNode):
             seconds_since_last_update = current_time - self._time_of_the_last_update
             self._time_of_the_last_update = current_time
             frequency = self.mne_info['sfreq']
-            max_samples_in_chunk = np.int64(seconds_since_last_update * frequency)  # Actual number can be lower if
-            # we are at the end of file and not looping
-            max_samples_in_chunk = min(max_samples_in_chunk, self.MAX_SAMPLES_IN_CHUNK)  # can't process fast enough
-            indices = self._samples_already_read + np.arange(max_samples_in_chunk)
 
+            # How many sample we would like to read
+            max_samples_in_chunk = np.int64(seconds_since_last_update * frequency)
+            # Lower it to the amount we can process in a reasonable amount of time
+            max_samples_in_chunk = min(max_samples_in_chunk, self.MAX_SAMPLES_IN_CHUNK)
+
+            # We will have read max_samples_in_chunk samples unless we hit the end
             samples_in_data = self.data.shape[TIME_AXIS]
-            if self.loop_the_file is True:
-                mode = 'wrap'
-                self._samples_already_read = (self._samples_already_read + max_samples_in_chunk) % samples_in_data
-            else:  # self.loop_the_file is False
-                mode = 'clip'
-                self._samples_already_read = min(self._samples_already_read + max_samples_in_chunk, samples_in_data)
-                if self._samples_already_read == samples_in_data:
-                    self.is_alive = False
+            stop_idx = self._samples_already_read + max_samples_in_chunk
+            self.output = get_a_time_slice(self.data, start_idx=self._samples_already_read, stop_idx=stop_idx)
+            actual_samples_in_chunk = self.output.shape[TIME_AXIS]
+            self._samples_already_read = self._samples_already_read + actual_samples_in_chunk
 
-            self.output = self.data.take(indices=indices, axis=TIME_AXIS, mode=mode)
+            # If we do hit the end we need to either start again or stop completely depending on loop_the_file
+            if self._samples_already_read == samples_in_data:
+                if self.loop_the_file is True:
+                    self._samples_already_read = 0
+                else:
+                    self.is_alive = False
 
         else:
             self._time_of_the_last_update = current_time
