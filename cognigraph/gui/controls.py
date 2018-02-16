@@ -63,6 +63,7 @@ class OutputsControls(MultipleNodeControls):
     SUPPORTED_NODES = [
         NodeControlClasses(output_nodes.LSLStreamOutput, outputs_controls.LSLStreamOutputControls),
         NodeControlClasses(output_nodes.ThreeDeeBrain, outputs_controls.ThreeDeeBrainControls),
+        NodeControlClasses(output_nodes.SignalViewer, outputs_controls.SignalViewerControls)
     ]
 
 

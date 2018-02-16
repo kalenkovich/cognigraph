@@ -12,11 +12,12 @@ from scipy import sparse
 
 from ..helpers.pysurfer.smoothing_matrix import smoothing_matrix as calculate_smoothing_matrix, mesh_edges
 from .node import OutputNode
-from .. import CHANNEL_AXIS
+from .. import CHANNEL_AXIS, TIME_AXIS, PYNFB_TIME_AXIS
 from ..helpers.lsl import convert_numpy_format_to_lsl, convert_numpy_array_to_lsl_chunk, create_lsl_outlet
 from ..helpers.matrix_functions import last_sample, make_time_dimension_second
 from ..helpers.ring_buffer import RingBuffer
 from ..helpers.channels import read_channel_types
+from vendor.nfb.pynfb.widgets.signal_viewers import RawSignalViewer as nfbSignalViewer
 
 
 class LSLStreamOutput(OutputNode):
@@ -324,3 +325,37 @@ class BrainPainter(object):
             smoothing_matrix = calculate_smoothing_matrix(sources_idx, adj_mat)
             sparse.save_npz(smoothing_matrix_file_path, smoothing_matrix)
             return smoothing_matrix
+
+
+class SignalViewer(OutputNode):
+    CHANGES_IN_THESE_REQUIRE_RESET = ()
+
+    UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = ('mne_info', )
+
+    def _initialize(self):
+        mne_info = self.traverse_back_and_find('mne_info')
+        self.widget = nfbSignalViewer(fs=mne_info['sfreq'], names=mne_info['ch_names'],
+                                      seconds_to_plot=10)
+
+    def _update(self):
+        chunk = self.input_node.output
+        if TIME_AXIS == PYNFB_TIME_AXIS:
+            self.widget.update(chunk)
+        else:
+            self.widget.update(chunk.T)
+
+    def _reset(self) -> bool:
+        # Nothing to reset, really
+        pass
+
+    def _on_input_history_invalidation(self):
+        # Don't really care, will draw whatever
+        pass
+
+    def _check_value(self, key, value):
+        # Nothing to be set
+        pass
+
+    def __init__(self):
+        super().__init__()
+        self.widget = None  # type: nfbSignalViewer

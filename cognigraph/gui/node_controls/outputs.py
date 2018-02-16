@@ -178,3 +178,11 @@ class LSLStreamOutputControls(OutputNodeControls):
         # Changes to the node
         pass
     '''
+
+
+class SignalViewerControls(OutputNodeControls):
+    OUTPUT_CLASS = outputs.SignalViewer
+    CONTROLS_LABEL = 'Signal Viewer'
+
+    def _create_parameters(self):
+        pass
