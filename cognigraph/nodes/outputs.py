@@ -331,6 +331,7 @@ class SignalViewer(OutputNode):
     CHANGES_IN_THESE_REQUIRE_RESET = ()
 
     UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = ('mne_info', )
+    SAVERS_FOR_UPSTREAM_MUTABLE_OBJECTS = {'mne_info': lambda info: (info['ch_names'])}
 
     def _initialize(self):
         mne_info = self.traverse_back_and_find('mne_info')

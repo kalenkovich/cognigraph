@@ -108,6 +108,7 @@ class Preprocessing(ProcessorNode):
                 return self._interpolation_matrix.dot(input_array.T).T
 
     UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = ('mne_info', )
+    SAVERS_FOR_UPSTREAM_MUTABLE_OBJECTS = {'mne_info': lambda info: (info['ch_names'])}
 
 
 class InverseModel(ProcessorNode):
@@ -117,6 +118,7 @@ class InverseModel(ProcessorNode):
 
     UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = ('mne_info', )
     CHANGES_IN_THESE_REQUIRE_RESET = ('mne_inverse_model_file_path', 'snr', 'method')
+    SAVERS_FOR_UPSTREAM_MUTABLE_OBJECTS = {'mne_info': lambda info: (info['ch_names'])}
 
     def _check_value(self, key, value):
         if key == 'method':
@@ -191,6 +193,7 @@ class LinearFilter(ProcessorNode):
 
     UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = ('mne_info', )
     CHANGES_IN_THESE_REQUIRE_RESET = ('lower_cutoff', 'upper_cutoff')
+    SAVERS_FOR_UPSTREAM_MUTABLE_OBJECTS = {'mne_info': lambda info: (info['nchan'], )}
 
     def _check_value(self, key, value):
         if value is None:
@@ -260,6 +263,7 @@ class EnvelopeExtractor(ProcessorNode):
     UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = ('mne_info', )
     CHANGES_IN_THESE_REQUIRE_RESET = ('method', 'factor')
     SUPPORTED_METHODS = ('Exponential smoothing', )
+    SAVERS_FOR_UPSTREAM_MUTABLE_OBJECTS = {'mne_info': lambda info: (info['nchan'],)}
 
     def __init__(self, factor=0.9):
         super().__init__()
@@ -329,6 +333,7 @@ class Beamformer(ProcessorNode):
 
     UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = ('mne_info',)
     CHANGES_IN_THESE_REQUIRE_RESET = ('snr', 'output_type', 'is_adaptive')
+    SAVERS_FOR_UPSTREAM_MUTABLE_OBJECTS = {'mne_info': lambda info: (info['ch_names'])}
 
     def _update(self):
 

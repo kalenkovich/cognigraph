@@ -34,6 +34,11 @@ class Node(object):
         msg = 'Each subclass of Node must have a CHANGES_IN_THESE_REQUIRE_REINITIALIZATION constant defined'
         raise NotImplementedError(msg)
 
+    # Some upstream properties are mutable and thus saving them would not work. Saving a copy would trigger unnecessary
+    # reinitializations when something minor has changed. Thus, any concrete subclass has to provide a way to save only
+    # what is necessary. Keys are property names, values are functions that return an appropriate tuple.
+    SAVERS_FOR_UPSTREAM_MUTABLE_OBJECTS = dict()
+
     def __init__(self):
         self._input_node = None  # type: Node
         self.output = None  # type: np.ndarray
@@ -93,8 +98,12 @@ class Node(object):
         if self._initialized is True and self._should_reinitialize is False:
             raise ValueError('Trying to initialize even though there is no indication for it.')
 
-        self._saved_from_upstream = {item: self.traverse_back_and_find(item) for item
-                                     in self.UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION}
+        self._saved_from_upstream = {item: self.traverse_back_and_find(item)
+                                     if item not in self.SAVERS_FOR_UPSTREAM_MUTABLE_OBJECTS
+                                     else self.SAVERS_FOR_UPSTREAM_MUTABLE_OBJECTS[item](
+                                         self.traverse_back_and_find(item)
+                                     )
+                                     for item in self.UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION}
 
         with self.not_triggering_reset():
             print('Initializing the {} node'.format(class_name_of(self)))
@@ -232,9 +241,18 @@ class Node(object):
     def _the_change_requires_reinitialization(self):
         """Checks if anything important changed upstream wrt value captured at initialization"""
         for item, value in self._saved_from_upstream.items():
+            # Mutable objects are handled separately. Nodes have to define a function to save only what is needed.
+            if item in self.SAVERS_FOR_UPSTREAM_MUTABLE_OBJECTS:
+                saved = self.SAVERS_FOR_UPSTREAM_MUTABLE_OBJECTS[item](
+                    value
+                )
+            else:
+                saved = value
+
             if value != self.traverse_back_and_find(item):
                 return True
-        return False
+
+        return False  # Nothing has changed
 
 
 class SourceNode(Node):
