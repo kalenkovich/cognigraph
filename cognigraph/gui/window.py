@@ -25,6 +25,7 @@ class GUIWindow(QtGui.QMainWindow):
         widgets_layout = QtGui.QHBoxLayout()
         main_layout = QtGui.QHBoxLayout()
         main_layout.addLayout(widgets_layout)
+        self._controls_widget.setMinimumWidth(400)
         main_layout.addWidget(self._controls_widget)
 
         self.centralWidget().setLayout(main_layout)
@@ -34,6 +35,7 @@ class GUIWindow(QtGui.QMainWindow):
     def initialize(self):
         self._pipeline.initialize_all_nodes()
         for node_widget in self._node_widgets:
+            node_widget.setMinimumWidth(400)
             self.widgets_layout.addWidget(node_widget)
 
     @property
