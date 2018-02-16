@@ -37,3 +37,15 @@ def apply_quad_form_to_columns(A: np.ndarray, X: np.ndarray):
     # Works about 20% faster if X is Fortran array (column-major).
     # Use numpy.asfortranarray(X) to convert, X.flags.f_continuous to check.
     return np.einsum('...i,...i->...', X.T.dot(A), X.T)
+
+
+def get_a_time_slice(data, start_idx=None, stop_idx=None):
+    time_slice = slice(start_idx, stop_idx)
+    other_slice = slice(None)
+
+    if TIME_AXIS == 0:
+        full_slice = (time_slice, other_slice)
+    elif TIME_AXIS == 1:
+        full_slice = (other_slice, time_slice)
+
+    return data[full_slice]
