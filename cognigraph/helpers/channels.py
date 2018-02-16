@@ -56,3 +56,7 @@ def _set_channel_as_misc(channel):
 
 def read_channel_types(info: mne.Info):
     return [mne.io.pick.channel_type(info, i) for i in range(info['nchan'])]
+
+
+def channel_labels_saver(mne_info: mne.Info):
+    return tuple(mne_info['ch_names'], )

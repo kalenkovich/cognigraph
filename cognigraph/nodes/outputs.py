@@ -16,7 +16,7 @@ from .. import CHANNEL_AXIS, TIME_AXIS, PYNFB_TIME_AXIS
 from ..helpers.lsl import convert_numpy_format_to_lsl, convert_numpy_array_to_lsl_chunk, create_lsl_outlet
 from ..helpers.matrix_functions import last_sample, make_time_dimension_second
 from ..helpers.ring_buffer import RingBuffer
-from ..helpers.channels import read_channel_types
+from ..helpers.channels import read_channel_types, channel_labels_saver
 from vendor.nfb.pynfb.widgets.signal_viewers import RawSignalViewer as nfbSignalViewer
 
 
@@ -33,6 +33,7 @@ class LSLStreamOutput(OutputNode):
     UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = (
         'source_name', 'mne_info', 'dtype',
     )
+    SAVERS_FOR_UPSTREAM_MUTABLE_OBJECTS = {'mne_info': lambda info: (info['sfreq'], ) + channel_labels_saver(info)}
 
     def _reset(self):
         # It is impossible to change then name of an already started stream so we have to initialize again
@@ -84,6 +85,7 @@ class ThreeDeeBrain(OutputNode):
     UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = (
         'mne_forward_model_file_path', 'mne_info'
     )
+    SAVERS_FOR_UPSTREAM_MUTABLE_OBJECTS = {'mne_info': channel_labels_saver}
 
     LIMITS_MODES = SimpleNamespace(GLOBAL='Global', LOCAL='Local', MANUAL='Manual')
 
@@ -331,7 +333,7 @@ class SignalViewer(OutputNode):
     CHANGES_IN_THESE_REQUIRE_RESET = ()
 
     UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = ('mne_info', )
-    SAVERS_FOR_UPSTREAM_MUTABLE_OBJECTS = {'mne_info': lambda info: (info['ch_names'])}
+    SAVERS_FOR_UPSTREAM_MUTABLE_OBJECTS = {'mne_info': channel_labels_saver}
 
     def _initialize(self):
         mne_info = self.traverse_back_and_find('mne_info')

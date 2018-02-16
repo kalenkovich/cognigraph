@@ -240,17 +240,26 @@ class Node(object):
 
     def _the_change_requires_reinitialization(self):
         """Checks if anything important changed upstream wrt value captured at initialization"""
-        for item, value in self._saved_from_upstream.items():
+
+        for item, saved_value in self._saved_from_upstream.items():
+
+            current_value = self.traverse_back_and_find(item)
             # Mutable objects are handled separately. Nodes have to define a function to save only what is needed.
             if item in self.SAVERS_FOR_UPSTREAM_MUTABLE_OBJECTS:
-                saved = self.SAVERS_FOR_UPSTREAM_MUTABLE_OBJECTS[item](
-                    value
-                )
-            else:
-                saved = value
+                saver_function = self.SAVERS_FOR_UPSTREAM_MUTABLE_OBJECTS[item]
+                current_value = saver_function(current_value)
 
-            if value != self.traverse_back_and_find(item):
-                return True
+            try:
+                if saved_value != current_value:
+                    return True
+            except ValueError as e:
+                exception_message = (
+                        'There was a problem comparing {item} property upstream from a {class_name} node.\n'
+                        'If {value_type} is a mutable type, then add a function to save smth immutable '
+                        + 'from it to the SAVERS_FOR_UPSTREAM_MUTABLE_OBJECTS dictionary property of '
+                        + '{class_name}'.format(item=item, class_name=class_name_of(self),
+                                                value_type=type(current_value)))
+                raise Exception(exception_message) from e
 
         return False  # Nothing has changed
 

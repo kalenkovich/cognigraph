@@ -11,7 +11,7 @@ from ..helpers.matrix_functions import (make_time_dimension_second, put_time_dim
 from ..helpers.inverse_model import (get_default_forward_file, assemble_gain_matrix, make_inverse_operator,
                                      matrix_from_inverse_operator)
 from ..helpers.pynfb import pynfb_ndarray_function_wrapper, ExponentialMatrixSmoother
-from ..helpers.channels import calculate_interpolation_matrix
+from ..helpers.channels import calculate_interpolation_matrix, channel_labels_saver
 from .. import TIME_AXIS
 from vendor.nfb.pynfb.signal_processing import filters
 
@@ -108,7 +108,7 @@ class Preprocessing(ProcessorNode):
                 return self._interpolation_matrix.dot(input_array.T).T
 
     UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = ('mne_info', )
-    SAVERS_FOR_UPSTREAM_MUTABLE_OBJECTS = {'mne_info': lambda info: (info['ch_names'])}
+    SAVERS_FOR_UPSTREAM_MUTABLE_OBJECTS = {'mne_info': channel_labels_saver}
 
 
 class InverseModel(ProcessorNode):
@@ -118,7 +118,7 @@ class InverseModel(ProcessorNode):
 
     UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = ('mne_info', )
     CHANGES_IN_THESE_REQUIRE_RESET = ('mne_inverse_model_file_path', 'snr', 'method')
-    SAVERS_FOR_UPSTREAM_MUTABLE_OBJECTS = {'mne_info': lambda info: (info['ch_names'])}
+    SAVERS_FOR_UPSTREAM_MUTABLE_OBJECTS = {'mne_info': channel_labels_saver}
 
     def _check_value(self, key, value):
         if key == 'method':
@@ -333,7 +333,7 @@ class Beamformer(ProcessorNode):
 
     UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = ('mne_info',)
     CHANGES_IN_THESE_REQUIRE_RESET = ('snr', 'output_type', 'is_adaptive')
-    SAVERS_FOR_UPSTREAM_MUTABLE_OBJECTS = {'mne_info': lambda info: (info['ch_names'])}
+    SAVERS_FOR_UPSTREAM_MUTABLE_OBJECTS = {'mne_info': channel_labels_saver}
 
     def _update(self):
 
