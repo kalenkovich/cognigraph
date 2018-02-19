@@ -188,7 +188,7 @@ class BeamformerControls(ProcessorNodeControls):
                                                                     decimals=2, limits=(0.90, 0.99),
                                                                     value=forgetting_factor_value)
         forgetting_factor_spin_box.sigValueChanged.connect(self._on_forgetting_factor_changed)
-        self.forgetting_factor_spin_box.addChild(forgetting_factor_spin_box)
+        self.forgetting_factor_spin_box = self.addChild(forgetting_factor_spin_box)
 
     def _on_adaptiveness_changed(self, param, value):
         self.forgetting_factor_spin_box.show(value)

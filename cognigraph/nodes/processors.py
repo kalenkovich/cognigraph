@@ -327,13 +327,17 @@ class Beamformer(ProcessorNode):
         self._gain_matrix = G
 
         if self.is_adaptive is False:
-            self._Rxx = G.T.dot(G)
+            self._Rxx = G.dot(G.T)
         elif self.is_adaptive is True:
             self._Rxx = 0
         self.initialized_as_adaptive = self.is_adaptive
 
         frequency = mne_info['sfreq']
-        self._forgetting_factor_per_sample = np.power(self._forgetting_factor_per_sample, 1 / frequency)
+        self._forgetting_factor_per_sample = np.power(self.forgetting_factor_per_second, 1 / frequency)
+
+        channel_count = self._gain_matrix.shape[1]
+        channel_labels = ['vertex #{}'.format(i + 1) for i in range(channel_count)]
+        self.mne_info = mne.create_info(channel_labels, frequency)
 
     UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = ('mne_info',)
     CHANGES_IN_THESE_REQUIRE_RESET = ('snr', 'output_type', 'is_adaptive')
@@ -348,29 +352,41 @@ class Beamformer(ProcessorNode):
         input_array = self.input_node.output
 
         if self.is_adaptive is True:
-            # Update the "covariance" matrix Rxx
             self._update_covariance_matrix(input_array)
 
         # Diagonal-load, then invert Rxx. Once for non-adaptive, each time for adaptive
         if self.is_adaptive is True or self._Rxx_inv is None:
             _lambda = 1 / self.snr ** 2 * self._Rxx.trace()
-            electrode_count, sample_count = self._Rxx.shape[0]
+            electrode_count = self._Rxx.shape[0]
             Rxx_inv = np.linalg.inv(self._Rxx + _lambda * np.eye(electrode_count))
 
-        if self.is_adaptive is False:
-            self._Rxx_inv = Rxx_inv
+            if self.is_adaptive is False:
+                self._Rxx_inv = Rxx_inv
+
+        else:  # The non-adaptive version is used and _Rxx_inv has already been calculated
+            Rxx_inv = self._Rxx_inv
 
         G = self._gain_matrix
-        power = 1 / apply_quad_form_to_columns(A=Rxx_inv, X=G)
+        normalization = 1 / apply_quad_form_to_columns(A=Rxx_inv, X=G)
 
-        if self.output_type == 'power':
+        if self.output_type == 'power' and self.is_adaptive is True:
+            # In the adaptive version we use an algebraic trick to compute power like this. The trick relies on
+            # approximation of Rxx by XX' where X is the current chunk. This makes no sense in the non-adaptive version.
+            power = normalization
+
             # Power is estimated once per chunk, so we just repeat it for each sample
+            sample_count = input_array.shape[TIME_AXIS]
             self.output = np.repeat(power[:, np.newaxis], sample_count, axis=1)
 
-        elif self.output_type == 'activation':
+        elif self.output_type == 'activation' or self.is_adaptive is False:
             self.output = put_time_dimension_back_from_second(
                 G.T.dot(Rxx_inv).dot(make_time_dimension_second(input_array))
             )
+            # And normalize
+            self.output *= np.expand_dims(normalization, TIME_AXIS)
+
+            if self.output_type == 'power':
+                self.output = self.output ** 2
 
     def _reset(self) -> bool:
 
@@ -407,7 +423,8 @@ class Beamformer(ProcessorNode):
         sample_count = input_array.shape[TIME_AXIS]
         # Exponential smoothing of XX'
         for sample in make_time_dimension_second(input_array).T:
-            self._Rxx = alpha * self._Rxx + (1 - alpha) * sample.dot(sample.T)
+            sample_2d = sample[:, np.newaxis]
+            self._Rxx = alpha * self._Rxx + (1 - alpha) * sample_2d.dot(sample_2d.T)
 
 
 # TODO: implement this function
