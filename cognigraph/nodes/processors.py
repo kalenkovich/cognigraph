@@ -256,9 +256,13 @@ class EnvelopeExtractor(ProcessorNode):
                 raise ValueError('Method {} is not supported. We support only {}'.format(value, self.SUPPORTED_METHODS))
 
     def _reset(self):
-        self._envelope_extractor.reset()
+        self._should_reinitialize = True
+        self.initialize()
         output_history_is_no_longer_valid = True
         return output_history_is_no_longer_valid
+
+    def _on_input_history_invalidation(self):
+        self._envelope_extractor.reset()
 
     UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = ('mne_info', )
     CHANGES_IN_THESE_REQUIRE_RESET = ('method', 'factor')
