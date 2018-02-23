@@ -305,7 +305,7 @@ class Beamformer(ProcessorNode):
         self._channel_indices = None  # type: list
         self._gain_matrix = None  # type: np.ndarray
         self._Rxx = None  # type: np.ndarray
-        self._Rxx_inv = None  # type: np.ndarray
+        self._kernel = None # type: np.ndarray
         self.forgetting_factor_per_second = forgetting_factor_per_second  # type: float
         self._forgetting_factor_per_sample = None  # type: float
 
@@ -329,9 +329,15 @@ class Beamformer(ProcessorNode):
 
         G = self._gain_matrix
         if self.is_adaptive is False:
-            self._Rxx = G.dot(G.T)
+            Rxx = G.dot(G.T)
+            self._kernel = self._calculate_kernel(Rxx)
+
         elif self.is_adaptive is True:
             self._Rxx = 0
+            # Optimization
+            if not self._gain_matrix.flags['F_CONTIGUOUS']:
+                self._gain_matrix = np.asfortranarray(self._gain_matrix)
+
         self.initialized_as_adaptive = self.is_adaptive
 
         frequency = mne_info['sfreq']
@@ -345,50 +351,38 @@ class Beamformer(ProcessorNode):
     CHANGES_IN_THESE_REQUIRE_RESET = ('snr', 'output_type', 'is_adaptive')
     SAVERS_FOR_UPSTREAM_MUTABLE_OBJECTS = {'mne_info': channel_labels_saver}
 
+    def _calculate_kernel(self, Rxx):
+        Rxx_inv = self._regularized_inverse(Rxx)
+
+        # Calculate the denominators
+        G = self._gain_matrix
+        denominators = 1 / apply_quad_form_to_columns(A=Rxx_inv, X=G)
+
+        return G.T.dot(Rxx_inv) * np.expand_dims(denominators, TIME_AXIS)
+
+    def _regularized_inverse(self, Rxx):
+        electrode_count = Rxx.shape[0]
+        _lambda = 1 / self.snr ** 2 * Rxx.trace() / electrode_count
+        return np.linalg.inv(Rxx + _lambda * np.eye(electrode_count))
+
     def _update(self):
 
-        # Optimization
-        if not self._gain_matrix.flags['F_CONTIGUOUS']:
-            self._gain_matrix = np.asfortranarray(self._gain_matrix)
-
-
-        if self.is_adaptive is True:
-            self._update_covariance_matrix(input_array)
-
-        # Diagonal-load, then invert Rxx. Once for non-adaptive, each time for adaptive
-        if self.is_adaptive is True or self._Rxx_inv is None:
-            electrode_count = self._Rxx.shape[0]
-            _lambda = 1 / self.snr ** 2 * self._Rxx.trace() / electrode_count
-            Rxx_inv = np.linalg.inv(self._Rxx + _lambda * np.eye(electrode_count))
-
-            if self.is_adaptive is False:
-                self._Rxx_inv = Rxx_inv
         input_array = get_a_subset_of_channels(self.input_node.output, self._channel_indices)
 
-        else:  # The non-adaptive version is used and _Rxx_inv has already been calculated
-            Rxx_inv = self._Rxx_inv
+        if self.is_adaptive is False:
+            kernel = self._kernel
+        else:
+            self._update_covariance_matrix(input_array)
+            kernel = self._calculate_kernel(self._Rxx)
 
-        G = self._gain_matrix
-        normalization = 1 / apply_quad_form_to_columns(A=Rxx_inv, X=G)
+        output = put_time_dimension_back_from_second(
+            kernel.dot(make_time_dimension_second(input_array))
+        )
 
-        if self.output_type == 'power' and self.is_adaptive is True:
-            # In the adaptive version we use an algebraic trick to compute power like this. The trick relies on
-            # approximation of Rxx by XX' where X is the current chunk. This makes no sense in the non-adaptive version.
-            power = normalization
+        if self.output_type == 'power':
+            output = output ** 2
 
-            # Power is estimated once per chunk, so we just repeat it for each sample
-            sample_count = input_array.shape[TIME_AXIS]
-            self.output = np.repeat(power[:, np.newaxis], sample_count, axis=1)
-
-        elif self.output_type == 'activation' or self.is_adaptive is False:
-            self.output = put_time_dimension_back_from_second(
-                G.T.dot(Rxx_inv).dot(make_time_dimension_second(input_array))
-            )
-            # And normalize
-            self.output *= np.expand_dims(normalization, TIME_AXIS)
-
-            if self.output_type == 'power':
-                self.output = self.output ** 2
+        self.output = output
 
     def _reset(self) -> bool:
 
