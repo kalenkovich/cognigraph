@@ -7,7 +7,7 @@ from mne.preprocessing import find_outliers
 
 from .node import ProcessorNode, Message
 from ..helpers.matrix_functions import (make_time_dimension_second, put_time_dimension_back_from_second,
-                                        apply_quad_form_to_columns)
+                                        apply_quad_form_to_columns, get_a_subset_of_channels)
 from ..helpers.inverse_model import (get_default_forward_file, assemble_gain_matrix, make_inverse_operator,
                                      matrix_from_inverse_operator)
 from ..helpers.pynfb import pynfb_ndarray_function_wrapper, ExponentialMatrixSmoother
@@ -302,6 +302,7 @@ class Beamformer(ProcessorNode):
         self.is_adaptive = is_adaptive  # type: bool
         self.initialized_as_adaptive = None  # type: bool
 
+        self._channel_indices = None  # type: list
         self._gain_matrix = None  # type: np.ndarray
         self._Rxx = None  # type: np.ndarray
         self._Rxx_inv = None  # type: np.ndarray
@@ -323,9 +324,10 @@ class Beamformer(ProcessorNode):
         if self._user_provided_forward_model_file_path is None:
             self._default_forward_model_file_path = get_default_forward_file(mne_info)
 
-        G = assemble_gain_matrix(self.mne_forward_model_file_path, mne_info)
-        self._gain_matrix = G
+        self._gain_matrix, self._channel_indices = assemble_gain_matrix(self.mne_forward_model_file_path, mne_info,
+                                                                        drop_missing=True)
 
+        G = self._gain_matrix
         if self.is_adaptive is False:
             self._Rxx = G.dot(G.T)
         elif self.is_adaptive is True:
@@ -349,7 +351,6 @@ class Beamformer(ProcessorNode):
         if not self._gain_matrix.flags['F_CONTIGUOUS']:
             self._gain_matrix = np.asfortranarray(self._gain_matrix)
 
-        input_array = self.input_node.output
 
         if self.is_adaptive is True:
             self._update_covariance_matrix(input_array)
@@ -362,6 +363,7 @@ class Beamformer(ProcessorNode):
 
             if self.is_adaptive is False:
                 self._Rxx_inv = Rxx_inv
+        input_array = get_a_subset_of_channels(self.input_node.output, self._channel_indices)
 
         else:  # The non-adaptive version is used and _Rxx_inv has already been calculated
             Rxx_inv = self._Rxx_inv
