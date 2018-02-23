@@ -49,3 +49,10 @@ def get_a_time_slice(data, start_idx=None, stop_idx=None):
         full_slice = (other_slice, time_slice)
 
     return data[full_slice]
+
+
+def get_a_subset_of_channels(data: np.ndarray, channel_indices: list) -> np.ndarray:
+    if TIME_AXIS == 0:
+        return data[:, channel_indices]
+    elif TIME_AXIS == 1:
+        return data[channel_indices, :]
