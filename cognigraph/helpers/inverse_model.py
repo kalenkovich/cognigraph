@@ -67,22 +67,36 @@ def get_default_forward_file(mne_info: mne.Info):
             return standard_1005_forward_file_path
 
 
-def assemble_gain_matrix(forward_model_path: str, mne_info: mne.Info):
+def assemble_gain_matrix(forward_model_path: str, mne_info: mne.Info, force_fixed=True, drop_missing=False):
     """
     Assemble the gain matrix from the forward model so that its rows correspond to channels in mne_info
+    :param force_fixed: whether to return the gain matrix that uses fixed orientations of dipoles
+    :param drop_missing: what to do with channels that are not in the forward solution? If False, zero vectors will be
+    returned for them, if True, they will not be represented in the returned matrix.
     :param forward_model_path:
     :param mne_info:
     :return: np.ndarray with as many rows as there are dipoles in the forward model and as many rows as there are
-    channels in mne_info. Throws an error if less than half of channels are present in the forward model.
+    channels in mne_info (well, depending on drop_missing). It drop_missing is True, then also returns indices of
+    channels that are both in the forward solution and mne_info
     """
-    channel_labels_upper = all_upper(mne_info['ch_names'])
 
+    # Get the gain matrix from the forward solution
     forward = mne.read_forward_solution(forward_model_path, verbose='ERROR')
-    mne.convert_forward_solution(forward, force_fixed=True, copy=False, verbose='ERROR')
+    if force_fixed is True:
+        mne.convert_forward_solution(forward, force_fixed=True, copy=False, verbose='ERROR')
     G_forward = forward['sol']['data']
-    channel_labels_forward = all_upper(forward['info']['ch_names'])
 
-    return _pick_columns_from_matrix(G_forward.T, channel_labels_upper, channel_labels_forward).T
+    # Take only the channels present in mne_info
+    channel_labels_upper = all_upper(mne_info['ch_names'])
+    channel_labels_forward = all_upper(forward['info']['ch_names'])
+    if drop_missing is True:  # Take only the channels that are both in mne_info and the forward solution
+        channel_labels_intersection = [label for label in channel_labels_upper if label in channel_labels_forward]
+        channel_indices = [channel_labels_forward.index(label) for label in channel_labels_upper]
+        return (_pick_columns_from_matrix(G_forward.T, channel_labels_intersection, channel_labels_forward).T,
+                channel_indices)
+
+    else:
+        return _pick_columns_from_matrix(G_forward.T, channel_labels_upper, channel_labels_forward).T
 
 
 def make_inverse_operator(forward_model_file_path, mne_info, sigma2=1):
