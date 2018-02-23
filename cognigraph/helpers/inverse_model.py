@@ -16,20 +16,22 @@ standard_1005_forward_file_path = os.path.join(sample_dir, 'sample_1005-eeg-oct-
 
 def _pick_columns_from_matrix(matrix: np.ndarray, output_column_labels: list, column_labels: list) -> np.ndarray:
     """
-    From matrix take only the columns that correspond to column_labels - in the right order.
+    From matrix take only the columns that correspond to output_column_labels - in the order of the latter.
     :param matrix: each column in matrix has a label (eg. EEG channel name)
     :param output_column_labels: labels that we need
-    :param column_labels: labels that we have
+    :param input_column_labels: labels that we have
     :return: np.ndarray with len(output_column_labels) columns and the same number of rows as matrix has.
     """
-    picker_matrix = np.zeros((len(column_labels), len(output_column_labels)))
-    for (label_index, label) in enumerate(output_column_labels):
-        try:
-            label_index_in_operator = column_labels.index(label)
-            picker_matrix[label_index_in_operator, label_index] = 1
-        except ValueError:
-            pass
-    return matrix.dot(picker_matrix)
+    # Choose the right columns, put zeros where label is missing
+    row_count = matrix.shape[0]
+    output_matrix = np.zeros((row_count, len(output_column_labels)))
+    indices_in_input, indices_in_output = zip(
+        *[(input_column_labels.index(label), idx)
+          for idx, label in enumerate(output_column_labels)
+          if label in input_column_labels])
+    output_matrix[:, indices_in_output] = matrix[:, indices_in_input]
+    return output_matrix
+
 
 
 def matrix_from_inverse_operator(inverse_operator, mne_info, snr, method) -> np.ndarray:
