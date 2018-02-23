@@ -356,8 +356,8 @@ class Beamformer(ProcessorNode):
 
         # Diagonal-load, then invert Rxx. Once for non-adaptive, each time for adaptive
         if self.is_adaptive is True or self._Rxx_inv is None:
-            _lambda = 1 / self.snr ** 2 * self._Rxx.trace()
             electrode_count = self._Rxx.shape[0]
+            _lambda = 1 / self.snr ** 2 * self._Rxx.trace() / electrode_count
             Rxx_inv = np.linalg.inv(self._Rxx + _lambda * np.eye(electrode_count))
 
             if self.is_adaptive is False:
