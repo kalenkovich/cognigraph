@@ -289,24 +289,24 @@ class Beamformer(ProcessorNode):
 
     SUPPORTED_OUTPUT_TYPES = ('power', 'activation')
 
-    def __init__(self, snr: float =3.0, output_type: str ='power', is_adaptive: bool =False, forward_model_path=None,
-                 forgetting_factor_per_second=0.99):
+    def __init__(self, snr: float =3.0, output_type: str ='power', is_adaptive: bool =False,
+                 forward_model_path: str =None, forgetting_factor_per_second: float =0.99):
         super().__init__()
 
-        self.snr = snr
-        self._user_provided_forward_model_file_path = forward_model_path
-        self._default_forward_model_file_path = None
-        self.mne_info = None
+        self.snr = snr  # type: float
+        self._user_provided_forward_model_file_path = forward_model_path  # type: str
+        self._default_forward_model_file_path = None  # type: str
+        self.mne_info = None  # type: mne.Info
 
-        self.output_type = output_type
-        self.is_adaptive = is_adaptive
+        self.output_type = output_type  # type: np.dtype
+        self.is_adaptive = is_adaptive  # type: bool
         self.initialized_as_adaptive = None  # type: bool
 
-        self._gain_matrix = None  # np.ndarray
-        self._Rxx = None  # np.ndarray
-        self._Rxx_inv = None  # np.ndarray
-        self.forgetting_factor_per_second = forgetting_factor_per_second
-        self._forgetting_factor_per_sample = None
+        self._gain_matrix = None  # type: np.ndarray
+        self._Rxx = None  # type: np.ndarray
+        self._Rxx_inv = None  # type: np.ndarray
+        self.forgetting_factor_per_second = forgetting_factor_per_second  # type: float
+        self._forgetting_factor_per_sample = None  # type: float
 
     @property
     def mne_forward_model_file_path(self):
