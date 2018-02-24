@@ -14,31 +14,21 @@ neuromag_forward_file_path = os.path.join(sample_dir, 'sample_audvis-meg-oct-6-f
 standard_1005_forward_file_path = os.path.join(sample_dir, 'sample_1005-eeg-oct-6-fwd.fif')
 
 
-def _pick_columns_from_matrix(matrix: np.ndarray, output_column_labels: list, input_column_labels: list,
-                              fixed_orientation: bool) -> np.ndarray:
+def _pick_columns_from_matrix(matrix: np.ndarray, output_column_labels: list, input_column_labels: list) -> np.ndarray:
     """
     From matrix take only the columns that correspond to output_column_labels - in the order of the latter.
     :param matrix: each column in matrix has a label (eg. EEG channel name)
     :param output_column_labels: labels that we need
     :param input_column_labels: labels that we have
-    :param fixed_orientation: whether matrix uses fixed or free orientation
     :return: np.ndarray with len(output_column_labels) columns and the same number of rows as matrix has.
     """
 
-    # Check that the matrix shape is consistent with the fixed_orientation parameter
-    if fixed_orientation is True:
-        columns_per_label = 1
-    else:
-        columns_per_label = 3
-    assert matrix.shape[1] == columns_per_label * len(input_column_labels)
-
     # Choose the right columns, put zeros where label is missing
     row_count = matrix.shape[0]
-    output_matrix = np.zeros((row_count, len(output_column_labels) * columns_per_label))
+    output_matrix = np.zeros((row_count, len(output_column_labels)))
     indices_in_input, indices_in_output = zip(*  # List of length-two arrays to two tuples
-        [np.asarray((input_column_labels.index(label), idx)) * columns_per_label + orientation_column_idx
+        [(input_column_labels.index(label), idx)
          for idx, label in enumerate(output_column_labels)
-         for orientation_column_idx in range(columns_per_label)
          if label in input_column_labels])
     output_matrix[:, indices_in_output] = matrix[:, indices_in_input]
     return output_matrix
@@ -95,7 +85,7 @@ def assemble_gain_matrix(forward_model_path: str, mne_info: mne.Info, force_fixe
     # Get the gain matrix from the forward solution
     forward = mne.read_forward_solution(forward_model_path, verbose='ERROR')
     if force_fixed is True:
-        mne.convert_forward_solution(forward, force_fixed=True, copy=False, verbose='ERROR')
+        mne.convert_forward_solution(forward, force_fixed=force_fixed, copy=False, verbose='ERROR')
     G_forward = forward['sol']['data']
 
     # Take only the channels present in mne_info
@@ -104,14 +94,11 @@ def assemble_gain_matrix(forward_model_path: str, mne_info: mne.Info, force_fixe
     if drop_missing is True:  # Take only the channels that are both in mne_info and the forward solution
         channel_labels_intersection = [label for label in channel_labels_upper if label in channel_labels_forward]
         channel_indices = [channel_labels_upper.index(label) for label in channel_labels_intersection]
-        return (_pick_columns_from_matrix(
-                    G_forward.T, channel_labels_intersection, channel_labels_forward,
-                    fixed_orientation=force_fixed).T,
+        return (_pick_columns_from_matrix(G_forward.T, channel_labels_intersection, channel_labels_forward).T,
                 channel_indices)
 
     else:
-        return _pick_columns_from_matrix(G_forward.T, channel_labels_upper, channel_labels_forward,
-                                         fixed_orientation=force_fixed).T
+        return _pick_columns_from_matrix(G_forward.T, channel_labels_upper, channel_labels_forward).T
 
 
 def make_inverse_operator(forward_model_file_path, mne_info, sigma2=1):
