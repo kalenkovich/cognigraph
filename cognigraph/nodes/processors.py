@@ -290,6 +290,7 @@ class Beamformer(ProcessorNode):
     SUPPORTED_OUTPUT_TYPES = ('power', 'activation')
 
     def __init__(self, snr: float =3.0, output_type: str ='power', is_adaptive: bool =False,
+                 fixed_orientation: bool = True,
                  forward_model_path: str =None, forgetting_factor_per_second: float =0.99):
         super().__init__()
 
@@ -300,7 +301,9 @@ class Beamformer(ProcessorNode):
 
         self.output_type = output_type  # type: np.dtype
         self.is_adaptive = is_adaptive  # type: bool
-        self.initialized_as_adaptive = None  # type: bool
+        self._initialized_as_adaptive = None  # type: bool
+        self.fixed_orientation = fixed_orientation  # type: bool
+        self._initialized_as_fixed = None  # type: bool
 
         self._channel_indices = None  # type: list
         self._gain_matrix = None  # type: np.ndarray
@@ -308,6 +311,8 @@ class Beamformer(ProcessorNode):
         self._kernel = None # type: np.ndarray
         self.forgetting_factor_per_second = forgetting_factor_per_second  # type: float
         self._forgetting_factor_per_sample = None  # type: float
+
+
 
     @property
     def mne_forward_model_file_path(self):
@@ -325,7 +330,8 @@ class Beamformer(ProcessorNode):
             self._default_forward_model_file_path = get_default_forward_file(mne_info)
 
         self._gain_matrix, self._channel_indices = assemble_gain_matrix(self.mne_forward_model_file_path, mne_info,
-                                                                        drop_missing=True)
+                                                                        drop_missing=True,
+                                                                        force_fixed=self.fixed_orientation)
 
         G = self._gain_matrix
         if self.is_adaptive is False:
@@ -338,27 +344,41 @@ class Beamformer(ProcessorNode):
             if not self._gain_matrix.flags['F_CONTIGUOUS']:
                 self._gain_matrix = np.asfortranarray(self._gain_matrix)
 
-        self.initialized_as_adaptive = self.is_adaptive
-
         frequency = mne_info['sfreq']
         self._forgetting_factor_per_sample = np.power(self.forgetting_factor_per_second, 1 / frequency)
 
-        channel_count = self._gain_matrix.shape[1]
-        channel_labels = ['vertex #{}'.format(i + 1) for i in range(channel_count)]
+        if self.fixed_orientation is True:
+            vertex_count = self._gain_matrix.shape[1]
+        else:
+            vertex_count = int(self._gain_matrix.shape[1] / 3)
+        channel_labels = ['vertex #{}'.format(i + 1) for i in range(vertex_count)]
         self.mne_info = mne.create_info(channel_labels, frequency)
 
+        self._initialized_as_adaptive = self.is_adaptive
+        self._initialized_as_fixed = self.fixed_orientation
+
     UPSTREAM_CHANGES_IN_THESE_REQUIRE_REINITIALIZATION = ('mne_info',)
-    CHANGES_IN_THESE_REQUIRE_RESET = ('snr', 'output_type', 'is_adaptive')
+    CHANGES_IN_THESE_REQUIRE_RESET = ('snr', 'output_type', 'is_adaptive', 'fixed_orientation')
     SAVERS_FOR_UPSTREAM_MUTABLE_OBJECTS = {'mne_info': channel_labels_saver}
 
     def _calculate_kernel(self, Rxx):
         Rxx_inv = self._regularized_inverse(Rxx)
 
-        # Calculate the denominators
         G = self._gain_matrix
-        denominators = 1 / apply_quad_form_to_columns(A=Rxx_inv, X=G)
 
-        return G.T.dot(Rxx_inv) * np.expand_dims(denominators, TIME_AXIS)
+        if self.fixed_orientation is True:
+            denominators = 1 / apply_quad_form_to_columns(A=Rxx_inv, X=G)
+            return G.T.dot(Rxx_inv) * np.expand_dims(denominators, TIME_AXIS)
+
+        else:  # Free orientation
+            vertex_count = int(G.shape[1] / 3)
+            kernel = np.zeros(np.flipud(G.shape))
+            for idx in range(vertex_count):
+                vertex_slice = slice(idx * 3, idx * 3 + 3)
+                Gi = G[:, vertex_slice]
+                denominator = Gi.T.dot(Rxx_inv).dot(Gi)
+                kernel[vertex_slice, :] = np.linalg.inv(denominator).dot(Gi.T.dot(Rxx_inv))
+            return kernel
 
     def _regularized_inverse(self, Rxx):
         electrode_count = Rxx.shape[0]
@@ -379,15 +399,22 @@ class Beamformer(ProcessorNode):
             kernel.dot(make_time_dimension_second(input_array))
         )
 
-        if self.output_type == 'power':
-            output = output ** 2
+        if self.fixed_orientation is True:
+            if self.output_type == 'power':
+                output = output ** 2
+        else:
+            vertex_count = int(self._gain_matrix.shape[1] / 3)
+            output = np.sum(np.power(output, 2).reshape((vertex_count, 3, -1)), axis=1)
+            if self.output_type == 'activation':
+                output = np.sqrt(output)
 
         self.output = output
 
     def _reset(self) -> bool:
 
-        # Only changing adaptiveness requires reinitialization
-        if self.initialized_as_adaptive is not self.is_adaptive:
+        # Only changing adaptiveness or fixed_orientation requires reinitialization
+        if (self._initialized_as_adaptive is not self.is_adaptive
+                or self._initialized_as_fixed is not self.fixed_orientation):
             self._should_reinitialize = True
             self.initialize()
 
@@ -396,7 +423,7 @@ class Beamformer(ProcessorNode):
 
     def _on_input_history_invalidation(self):
         # Only adaptive version relies on history
-        if self.initialized_as_adaptive is True:
+        if self._initialized_as_adaptive is True:
             self._should_reinitialize = True
             self.initialize()
 
