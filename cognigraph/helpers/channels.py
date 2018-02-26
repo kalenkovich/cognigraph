@@ -60,3 +60,13 @@ def read_channel_types(info: mne.Info):
 
 def channel_labels_saver(mne_info: mne.Info):
     return tuple(mne_info['ch_names'], )
+
+
+def get_average_reference_projection(channel_count: int):
+    """
+    Calculates average-reference projection matrix assuming all channel_count channels are used
+    :param channel_count: number of channels
+    :return: np.ndarray of shape (channel_count, channel_count)
+    """
+    n = channel_count
+    return np.eye(n) - np.ones((n, n)) / n
