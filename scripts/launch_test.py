@@ -88,3 +88,8 @@ timer = QtCore.QTimer()
 timer.timeout.connect(run)
 frequency = pipeline.frequency
 timer.setInterval(1000. / frequency * 10)
+
+
+# Убираем предупреждения numpy, иначе в iPython некрасиво как-то Ж)
+import numpy as np
+np.warnings.filterwarnings('ignore')
